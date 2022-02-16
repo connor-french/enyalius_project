@@ -1,0 +1,11 @@
+Package: enyalius
+Type: Package
+Title: Enyalius Project
+Version: 0.1.0
+Author: Connor French
+Maintainer: Connor French <french.connor.m@gmail.com>
+Repository: "https://github.com/connor-french/enyalius_project"
+Description: This is a space to house the analyses related to my project investigating genetic structure in Enyalius species. 
+License: CC BY 4.0
+Encoding: UTF-8
+LazyData: true
