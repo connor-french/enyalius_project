@@ -1,0 +1,17 @@
+RAxML-NG v1.1.0 (c) 2021 The Exelixis Lab
+
+!!! EXPERIMENTAL: please use on your own risk & report bugs !!!
+
+This is a ready-to-use binary which should be compatible with most 
+recent Apple systems using M1 chip (tested with Mac Mini 2020 / macOS 11.5.1).
+
+It uses ARM NEON vectorization via https://github.com/DLTcollab/sse2neon
+
+Please type 
+
+  ./raxml-ng -h
+
+to see available commands and usage examples.
+
+For further info and updates, please visit: https://github.com/amkozlov/raxml-ng
+

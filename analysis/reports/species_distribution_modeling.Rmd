@@ -1,0 +1,130 @@
+---
+title: "Species Distribution Modeling"
+output: html_document
+---
+
+I am modeling the distributions of the four *Enyalius* study species (*E. catenatus*, *E. pictus*, *E. perditus*, and *E. iheringii*) to understand their current distributions and responses to long-term historical climate change.  
+
+I will build robust models of their current distributions using recent environmental data (i.e. last few decades). Then, I will build similar models with variables that are available for both present-day and historical (i.e. last glacial maximum) time periods. I will use the **current** models as benchmarks for the performance of the models intended for hindcasting.  
+
+```{r setup}
+library(sf)
+library(terra)
+library(janitor)
+library(here)
+library(rnaturalearth)
+library(rasterVis)
+library(tidyverse)
+```
+
+
+# Current
+
+## Variable selection
+
+I'm choosing variables that encompass the range of the *Enyalius* species, are relevant to their physiology, and are obtainable at a reasonable spatial resolution. 
+
+Bioclims:  
+Using the BrazilClim dataset downloaded from Ramoni-Perazzi, P., Passamani, M., Thielen, D., Padovani, C., Arizapana-Almonacid, M.A., 2021. BrazilClim : The overcoming of limitations of pre‐existing bioclimate data. Int. J. Climatol. https://doi.org/10.1002/joc.7325. Downloaded on __2022-02-25__.  
+1 km resolution.  
+
+Land Cover:  
+Using the forest land cover rasters (classes 1-4) from Tuanmu, M.-N. and W. Jetz. 2014. A global 1-km consensus land-cover product for biodiversity and ecosystem modeling. Global Ecology and Biogeography 23(9): 1031-1045. Downloaded on __2022-02-26__.  
+1 km resolution  
+
+## Variable processing
+
+I'm cropping the variables to a relevant extent before going further with the individual SDMs. I'm cropping them with a 1 degree buffer around the entire species group's range. 
+
+First, I'm reading in the localities and plotting them to make sure there isn't anything wild. Everything looks reasonable!  
+
+```{r, locs, message=FALSE}
+# read in as a data frame first
+locs_df <- read_csv(here("analysis", "data", "enyalius_locs.csv")) %>% 
+  # the variable names are messy
+  janitor::clean_names() %>%
+  filter(!is.na(latitude), !is.na(longitude),
+         # remove localities that are only mapped to a Google Earth municipality. The reserve in the "GPS of the reserve" locality is barely a km, so that is acceptable error relative to the environmental resolution
+         source_lat_long != "Google Earth municipality") %>%
+  # there are some lat/longs with spaces. Need to fix this
+  mutate(longitude = str_remove(longitude, "\\s"), 
+         latitude = str_remove(latitude, "\\s")) %>% 
+  # convert to numeric
+  mutate(longitude = as.numeric(longitude),
+         latitude = as.numeric(latitude))
+
+# convert to sf for spatial operations
+locs_sf <- st_as_sf(locs_df, 
+                    coords = c("longitude", "latitude"),
+                    crs = 4326)
+
+# convert to vect for interacting with terra
+locs_vec <- vect(locs_sf)
+
+# atlantic forest shapefile for plotting
+af <- read_sf(here("analysis", "data", "atlantic_forest", "atlantic_forest.geojson"))
+
+# plot
+ggplot() +
+  geom_sf(data = st_geometry(af)) +
+  geom_sf(data = locs_sf)
+```
+
+Creating a convex hull with a 1 degree buffer.  
+
+```{r mcp-all, warning=FALSE}
+mcp_all <- st_convex_hull(st_union(locs_sf)) %>%
+  st_buffer(dist = 1.0) %>% 
+  terra::vect()
+
+plot(st_geometry(af))
+plot(mcp_all, add=TRUE)
+plot(locs_vec, add=TRUE)
+```
+
+Crop bioclims.  
+
+```{r crop-env, eval=FALSE}
+bioclims <- terra::rast(list.files(here("analysis", "data", "brazil_clim"), full.names = TRUE)) %>% 
+  terra::crop(mcp_all) %>% 
+  terra::mask(mcp_all)
+
+# fix the names  
+names(bioclims) <- str_remove(names(bioclims), "BC1.0_")
+
+
+plot(bioclims$bio_01)
+plot(st_geometry(af), add=TRUE)
+plot(mcp_all, add=TRUE)
+plot(locs_vec, add=TRUE)
+```
+
+Crop land cover.  
+
+```{r}
+landcover <- terra::rast(list.files(here("analysis", "data", "brazil_clim"), full.names = TRUE)) %>% 
+  terra::crop(mcp_all) %>% 
+  terra::mask(mcp_all)
+
+# fix the names  
+names(bioclims) <- str_remove(names(bioclims), "BC1.0_")
+
+
+plot(bioclims$bio_01)
+plot(st_geometry(af), add=TRUE)
+plot(mcp_all, add=TRUE)
+plot(locs_vec, add=TRUE)
+```
+
+
+
+## E. catenatus
+
+
+## E. pictus
+
+
+## E. perditus
+
+
+## E. iheringii
