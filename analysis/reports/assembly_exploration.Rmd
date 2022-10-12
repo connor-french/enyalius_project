@@ -1,0 +1,116 @@
+---
+title: "Assembly Exploration"
+author: "Connor French"
+output: 
+  html_document:
+    theme: "cosmo"
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(data.table)
+```
+
+
+```{r, echo = FALSE}
+# function for reading and cleaning data
+read_ipyrad <- function(path, name) {
+  t <- read_lines(path)
+  ss <- t[grep("## Final Sample stats summary", t):length(t)]
+  out <- read_table(ss, skip = 3,
+                    col_names = c("id_code", "state", "reads_raw", "reads_passed_filter", "clusters_total", "clusters_hidepth", "hetero_est", "error_est", "reads_consens", "loci_in_assembly")) %>% 
+  mutate(species = str_extract(id_code, "^[^_]+(?=_)"),
+         data_path = name) 
+  return(out)
+} 
+
+```
+
+
+
+```{r read-data}
+fileInput("stats",
+          label="Upload ipyrad stats text files here",
+          multiple = TRUE, accept = ".txt")
+      
+assembly_stats <- reactive({
+        bind_rows(map2(input$stats$datapath, input$stats$name, read_ipyrad))
+    })
+
+
+```
+
+
+```{r reads-filter}
+inputPanel(
+  selectInput("xvar", label = "X axis variable",
+              choices = c("clusters_total",  "clusters_hidepth",  "hetero_est",  "error_est",  "reads_consens",  "loci_in_assembly"), selected = "hetero_est"),
+)
+
+renderPlot({
+  req(input$stats)
+  ggplot(assembly_stats(), aes_string(x = input$xvar, y = "reads_passed_filter", color = "data_path")) +
+    geom_point()
+})
+```
+
+
+
+
+
+## examples
+I'm going to keep this stuff at the bottom for reference
+
+
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+
