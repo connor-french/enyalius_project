@@ -54,3 +54,15 @@ analysis/data/forest_cover/*
 
 # full original genetic data sets
 analysis/data/Laura_ALL_ms_FINAL_80complete.snps.phy
+
+# large predictor files
+analysis/output/cropped_predictors/*
+
+# assembly files. Those can be added to repo later
+assembly/*
+
+# slim files. I can track these later
+analysis/slim/*
+
+# sdm models. They're large and need to be stored elsewhere
+analysis/output/sdm_models/*
