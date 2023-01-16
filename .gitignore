@@ -66,3 +66,6 @@ analysis/slim/*
 
 # sdm models. They're large and need to be stored elsewhere
 analysis/output/sdm_models/*
+
+# adhoc R scripts used for things like conference presentations or lab meetings
+R/adhoc/*
