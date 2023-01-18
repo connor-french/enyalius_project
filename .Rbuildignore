@@ -1,6 +1,7 @@
+^environment\.yml$
 ^renv$
 ^renv\.lock$
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
-^README\.Rmd$
+^README\.qmd$

@@ -69,3 +69,7 @@ analysis/output/sdm_models/*
 
 # adhoc R scripts used for things like conference presentations or lab meetings
 R/adhoc/*
+
+
+# My lab notebook
+lab_notebook*

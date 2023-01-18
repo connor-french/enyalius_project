@@ -8,6 +8,11 @@
       }
     ]
   },
+  "Python": {
+    "Version": "3.8.12",
+    "Type": "conda",
+    "Name": "enyalius"
+  },
   "Packages": {
     "BH": {
       "Package": "BH",

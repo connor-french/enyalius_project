@@ -1,20 +1,8 @@
 ---
-output: github_document
-editor_options: 
-  markdown: 
-    wrap: 72
+title: "README"
+format: markdown_github
+editor: visual
 ---
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%"
-)
-```
 
 # Enyalius project
 
@@ -46,7 +34,7 @@ Directory and file guide:
         [earthenv.org/landcover](https://www.earthenv.org/landcover).
         Downloaded on 2022-02-26.
 
-    -    `enyalius_locs.csv`- table of enyalius localities and metadata
+    -   `enyalius_locs.csv`- table of enyalius localities and metadata
 
     -   `Laura_ALL_ms_FINAL_80complete.snps.phy`- SNPs file I'm using
         until I finalize my own assemblies of the data
@@ -108,6 +96,15 @@ Directory and file guide:
 
     -   `make_maps_fns.R`- functions to convert a raster to a SLiM map.
         Taken from Peter Ralph's `nebria` repository
+    -   `adhoc/` - functions used for a specific/single use that aren't
+        needed to reproduce results
+        -   `conda_setup.R` - script I used to setup a conda environment
+            for python package management. Users don't need it because
+            `renv` tracks python packages after initializing the conda
+            repo. They just need to install miniconda or anaconda
+
+        -   `evolution_2022_figures.R`- code I used to generate figures
+            for the 2022 Evolution Conference in Cleveland
 
 -   `renv/`- folder to house R and Python package info. Don't touch
     anything here.
