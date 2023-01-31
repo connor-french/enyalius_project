@@ -1,0 +1,26 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job               count    min threads    max threads
+--------------  -------  -------------  -------------
+multiqc_report        1              1              1
+total                 1              1              1
+
+Select jobs to execute...
+
+[Sat Jan 28 09:26:24 2023]
+rule multiqc_report:
+    input: fastq
+    output: multiqc_report.html
+    log: logs/multiqc/multiqc_report.log
+    jobid: 0
+    reason: Missing output files: multiqc_report.html
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+multiqc fastq -n multiqc_report.html
+[Sat Jan 28 09:26:44 2023]
+Finished job 0.
+1 of 1 steps (100%) done
+Complete log: .snakemake/log/2023-01-28T092624.189323.snakemake.log

@@ -9,9 +9,9 @@
     ]
   },
   "Python": {
-    "Version": "3.8.12",
+    "Version": "3.10.9",
     "Type": "conda",
-    "Name": "enyalius"
+    "Name": "enyaliuspy"
   },
   "Packages": {
     "BH": {

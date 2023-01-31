@@ -1,0 +1,28 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 4
+Rules claiming more threads will be scaled down.
+Job stats:
+job               count    min threads    max threads
+--------------  -------  -------------  -------------
+multiqc_report        1              1              1
+total                 1              1              1
+
+Select jobs to execute...
+
+[Fri Jan 27 15:31:42 2023]
+rule multiqc_report:
+    input: fastq
+    output: multiqc_report.html
+    jobid: 0
+    reason: Missing output files: multiqc_report.html
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+multiqc fastq -n multiqc_report.html
+Waiting at most 5 seconds for missing files.
+MissingOutputException in rule multiqc_report in file /Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/assembly/Snakefile, line 1:
+Job 0 completed successfully, but some output files are missing. Missing files after 5 seconds. This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait:
+multiqc_report.html
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-01-27T153142.375080.snakemake.log

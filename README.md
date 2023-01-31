@@ -18,8 +18,8 @@ Directory and file guide:
         of this file- I don’t remember where I got it.
 
     -   `brazil_clim/`- bioclimate variables (`.tif` rasters) refined
-        for Brazil, from [Ramoni-Perazzi et al.
-        2022](https://rmets.onlinelibrary.wiley.com/doi/abs/10.1002/joc.7325).
+        for Brazil, from [Ramoni-Perazzi et
+        al. 2022](https://rmets.onlinelibrary.wiley.com/doi/abs/10.1002/joc.7325).
         Downloaded on 2022-02-25.
 
     -   `chelsa_trace21k/`- CHELSA bioclimatic variables from the LGM
@@ -105,6 +105,3 @@ Directory and file guide:
 
 -   `renv/`- folder to house R and Python package info. Don’t touch
     anything here.
-
--   `spatial_thin_log.txt`- log from spatial thinning that always gets
-    output to root directory when I run SDMs

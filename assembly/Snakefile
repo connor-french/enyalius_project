@@ -1,0 +1,25 @@
+FASTQS = glob_wildcards("fastq/{condition}.fastq.gz").condition #list of fastq files
+
+
+rule run_fastqc:
+  input:
+    expand("fastq/{file}.fastq.gz", file = FASTQS)
+  output:
+    expand("fastq/{file}_fastqc.html", file = FASTQS)
+  log:
+    expand("logs/fastqc/{file}.log", file = FASTQS)
+  shell:
+    "fastqc {input}"
+
+rule multiqc_report:
+  input:
+    "fastq/"
+  output:
+    "multiqc_report.html"
+  log:
+    "logs/multiqc/multiqc_report.log"
+  shell:
+    "multiqc {input} -n {output}"
+
+
+
