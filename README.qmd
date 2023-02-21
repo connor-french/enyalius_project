@@ -4,7 +4,15 @@ format: markdown_github
 editor: visual
 ---
 
-Code and most data associated with the *Enyalius* comparative phylogeography project. The README right now is just a file guide.
+Code and access to data associated with the *Enyalius* comparative phylogeography project.
+
+To install python packages necessary for analysis, first install [miniconda](https://docs.conda.io/en/latest/miniconda.html) if you do not already have anaconda/miniconda. Then, create a conda environment with the command:
+
+`conda env create -f environment.yml`
+
+To activate the environment, run:
+
+`conda activate enyalius`
 
 Directory and file guide:
 

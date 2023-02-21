@@ -1,0 +1,75 @@
+---
+title: "Assembly QC"
+format: 
+  html:
+    code-fold: true
+editor: visual
+---
+
+This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on determining the appropriate clustering threshold. Thresholds of 0.90, 0.92, 0.94, 0.96, and 0.98 were considered. To determine the impact of batch effects, we are:
+
+-   plotting heterozygosity per plate, per species
+
+-   examining missingness per plate, per species
+
+-   including a visualization of a PCA that includes the plate number per species
+
+For the batch effect analysis, we're arbitrarily using the cluster threshold of 0.94. These values may vary a little bit from the optimal clustering threshold to be determined, but shouldn't impact any conclusions.
+
+To determine the appropriate clustering threshold, we are following [McCartney-Melstad et al. 2019](https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.13029)'s workflow, which includes the following steps:
+
+-   Genetic diversity (heterozygosity \~ number of SNPs recovered) 
+
+-   Cumulative variance explained by major principal components
+
+-   Relationship between missingness and genetic divergence
+
+-   Slope of isolation by distance
+
+-   Phylogenetic resolution
+
+Note, *ipyrad* no longer outputs paralog flags, so we are not performing the original first step, visualizing the fraction of inferred paralogs.
+
+```{r}
+#| label: r-setup
+#| warning: false
+#| message: false
+
+library(here)
+library(tidyverse)
+library(reticulate)
+
+use_condaenv(condaenv = "enyaliuspy")
+
+# read in localities
+locs <- read_csv(here("analysis", "data", "enyalius_locs.csv"))
+
+# specify snps path
+snps_path <- here("assembly", "")
+```
+
+```{python}
+#| label: python-setup
+#| warning: false
+#| message: false
+
+import ipyrad.analysis as ipa
+import pandas as pd
+import toyplot
+
+
+```
+
+::: panel-tabset
+## Batch effects
+
+::: panel-tabset
+## Heterozygosity
+
+## Missingness
+
+## PCA
+:::
+
+## Cluster evaluation
+:::
