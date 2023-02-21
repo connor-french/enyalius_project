@@ -75,3 +75,19 @@ lab_notebook*
 
 # fastq files
 assembly/fastq/*
+
+# snakemake outputs
+assembly/.snakemake/*
+
+# assembly output
+assembly/full/*
+
+# tags that indicate certain snakemake modules have finished
+assembly/*.done
+
+# multiqc output. I'm putting the original report in the output/reports folder
+assembly/multiqc*
+
+# logs
+assembly/logs/*
+

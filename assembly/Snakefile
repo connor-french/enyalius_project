@@ -1,11 +1,18 @@
+configfile:
+  "config.yaml"
+
 FASTQS = glob_wildcards("fastq/{condition}.fastq.gz").condition #list of fastq files
 
+rule all:
+  input:
+    "run_ipyrad.done"
 
 rule run_fastqc:
   input:
     expand("fastq/{file}.fastq.gz", file = FASTQS)
   output:
-    expand("fastq/{file}_fastqc.html", file = FASTQS)
+    expand("fastq/{file}_fastqc.html", file = FASTQS),
+    expand("fastq/{file}_fastqc.zip", file = FASTQS)
   log:
     expand("logs/fastqc/{file}.log", file = FASTQS)
   shell:
@@ -21,5 +28,30 @@ rule multiqc_report:
   shell:
     "multiqc {input} -n {output}"
 
+rule run_ipyrad:
+  input:
+    "params_full-clust90.txt"
+  output:
+    touch("run_ipyrad.done")
+  shell:
+    "ipyrad -p {input} -s 34567"
 
 
+rule run_ipyrad_clust_branches:
+  input:
+    p1="full/full_clust90.json"
+  output:
+    touch("run_ipyrad_clust_branches.done")
+  params:
+    cb=config["CLUSTBRANCHES"]
+  script:
+    "scripts/run_ipyrad_clust_branches.py"
+
+# clust94 added a very small decimal place for some reason
+rule rename_clust94:
+  input:
+    "full/clust94_clust_0.9400000000000001"
+  output:
+    "full/clust94_clust_0.94"
+  shell:
+    "rename {input} {output}"
