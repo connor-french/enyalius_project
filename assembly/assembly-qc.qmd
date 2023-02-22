@@ -28,6 +28,8 @@ To determine the appropriate clustering threshold, we are following [McCartney-M
 
 -   Phylogenetic resolution
 
+Also, as a sanity check, the error rate should be on the order of 0.001 and heterozygosity should be on the order of 0.01.
+
 Note, *ipyrad* no longer outputs paralog flags, so we are not performing the original first step, visualizing the fraction of inferred paralogs.
 
 ```{r}
@@ -39,13 +41,13 @@ library(here)
 library(tidyverse)
 library(reticulate)
 
+source(here("assembly", "scripts", "read_ipyrad_stats.R"))
+
 use_condaenv(condaenv = "enyaliuspy")
 
 # read in localities
 locs <- read_csv(here("analysis", "data", "enyalius_locs.csv"))
 
-# specify snps path
-snps_path <- here("assembly", "")
 ```
 
 ```{python}
@@ -53,9 +55,12 @@ snps_path <- here("assembly", "")
 #| warning: false
 #| message: false
 
+import ipyrad
 import ipyrad.analysis as ipa
+from ipyrad.analysis.sharing import Sharing
 import pandas as pd
 import toyplot
+import matplotlib.pyplot as plt
 
 
 ```
@@ -63,13 +68,193 @@ import toyplot
 ::: panel-tabset
 ## Batch effects
 
+The *Enyalius* individuals were sequenced across multiple plates, which can result in non-biological variation among samples due to library prep and sequencing artifacts. Here, I'm visualizing heterozygosity, missingness, and genetic structure (PCA) patterns across sequencing plates and species.
+
+```{r}
+#| label: batch-read-data
+#| message: false
+#| warning: false
+
+ip_stats_94 <- read_ipyrad_stats(here("assembly", "full", "clust94_outfiles", "clust94_stats.txt"))
+
+locs_stats_94 <- left_join(
+  ip_stats_94, 
+  locs,
+  by = "id_code"
+) %>% 
+  # remove and rename duplicate columns
+  select(-ends_with(".y")) %>% 
+  rename_with(~str_remove(.x, ".x"), ends_with(".x")) %>% 
+  # there are two concatenated samples that don't have plate info
+  # don't want outgroups
+  filter(!is.na(plate),
+         species %in% c("cat", "ihe", "per", "pic")) 
+
+# snps filepath for missingness matrix
+snps_path_94 <- here("assembly", "full", "clust94_outfiles", "clust94.snps.hdf5")
+
+```
+
 ::: panel-tabset
 ## Heterozygosity
 
+Heterozygosity varies across plates, but species mostly correspond with a single plate. For species sequenced across multiple plates, there doesn't appear to be plate effects.
+
+Error varies across plates in general and within species. We'll need to consider this for future analyses and may be able to account for it bioinformatically
+
+```{r}
+#| label: heterozygosity-plots
+#| layout-ncol: 2
+
+locs_stats_94 %>% 
+  ggplot(aes(x = hetero_est, y = plate)) + 
+  geom_boxplot() +
+  geom_jitter(height = 0.2) +
+  scale_color_viridis_d() +
+  labs(
+    y = "", 
+    x = "Heterozygosity est.",
+    title = "Heterozygosity") +
+  theme_bw()
+
+locs_stats_94 %>% 
+  ggplot(aes(x = hetero_est, fill = plate)) + 
+  geom_dotplot(binwidth = 0.0002) +
+  scale_fill_viridis_d() +
+  labs(y = "", x = "Heterozygosity est.") +
+  facet_wrap(~species) +
+  theme_bw() +
+  theme(legend.position = "top")
+```
+
+```{r}
+#| label: error-plots
+#| layout-ncol: 2
+
+locs_stats_94 %>% 
+  ggplot(aes(x = error_est, y = plate)) + 
+  geom_boxplot() +
+  geom_jitter(height = 0.2) +
+  scale_color_viridis_d() +
+  labs(
+    y = "", 
+    x = "Error est.",
+    title = "Error") +
+  theme_bw()
+
+locs_stats_94 %>% 
+  ggplot(aes(x = error_est, fill = plate)) + 
+  geom_dotplot(binwidth = 3e-5) +
+  scale_fill_viridis_d() +
+  labs(y = "", x = "Error est.") +
+  facet_wrap(~species) +
+  theme_bw() +
+  theme(legend.position = "top")
+
+```
+
 ## Missingness
+
+I'm using *ipyrad* to calculate allele sharing among samples and visualize as a heat map. Alleles should be shared most within species and shouldn't be structured by plate number.
+
+In the first iteration, there are a couple outlier individuals (*per_bana_CTMZ03943* and *cat_cam_PEU322*). These individuals also had a low number of reads and recovered loci. We have multiple individuals from each locality, so we're getting rid of them for future analyses.
+
+```{python}
+#| label: sharing-calculation
+#| message: false
+#| output: false
+#| cache: true
+
+# this takes a while. I'd write it to file and read it in if you plan on running this multiple times
+share = Sharing(
+    data=r.snps_path_94
+)
+share.run()
+
+```
+
+```{r}
+#| label: sharing-plot
+heatmap(
+  as.matrix(py$share$sharing_matrix),
+  Rowv = NA,
+  Colv = NA,
+  symm = TRUE,
+  main = "Proportion of shared alleles",
+  col= colorRampPalette(RColorBrewer::brewer.pal(8, "Oranges"))(25)
+  )
+
+legend(x="left", legend=c("low", "medium", "high"), 
+     fill=colorRampPalette(RColorBrewer::brewer.pal(8, "Oranges"))(3))
+```
+
+```{r}
+#| label: sharing-plot-no-outliers
+
+sdf <- py$share$sharing_matrix %>% 
+  as_tibble(rownames = "sample") %>% 
+  select(-per_bana_CTMZ03943, -cat_cam_PEU322) %>% 
+  filter(sample != "per_bana_CTMZ03943", sample != "cat_cam_PEU322") 
+
+sm <- as.matrix(sdf %>% select(-sample))
+rownames(sm) <- sdf$sample
+
+heatmap(
+  sm,
+  Rowv = NA,
+  Colv = NA,
+  symm = TRUE,
+  main = "Proportion of shared alleles, no outliers",
+  col= colorRampPalette(RColorBrewer::brewer.pal(8, "Oranges"))(25)
+  )
+
+legend(x="left", legend=c("low", "medium", "high"), 
+     fill=colorRampPalette(RColorBrewer::brewer.pal(8, "Oranges"))(3))
+```
+
+There appears to be some within-species variation, but it's not due to a batch effect. We visualized *E. pictus* and *E. iheringii* because they have individuals spread across plates.
+
+```{r}
+#| label: pictus-iheringii-outliers
+#| layout-ncol: 1
+
+locs_sdf_94 <- left_join(
+  sdf %>% rename(id_code = sample), 
+  locs,
+  by = "id_code"
+)
+
+locs_sdf_94 %>% 
+  filter(species == "pictus") %>% 
+  select(starts_with("pic"), plate) %>% 
+  pivot_longer(starts_with("pic"), names_to = "sample", values_to = "num_shared") %>% 
+  ggplot(aes(x = num_shared, fill = plate)) + 
+  geom_dotplot(binwidth = 6500) +
+  labs(x = "Number of shared alleles",
+       y = "",
+       title = "Number of shared alleles for E. pictus",
+       caption = "The zero values are due to the diagonal in the sharing matrix.") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+  
+locs_sdf_94 %>% 
+  filter(species == "iheringii") %>% 
+  select(starts_with("ihe"), plate) %>% 
+  pivot_longer(starts_with("ihe"), names_to = "sample", values_to = "num_shared") %>% 
+  ggplot(aes(x = num_shared, fill = plate)) + 
+  geom_dotplot(binwidth = 3000) +
+  labs(x = "Number of shared alleles",
+       y = "",
+       title = "Number of shared alleles for E. iheringii",
+       caption = "The zero values are due to the diagonal in the sharing matrix.") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
 
 ## PCA
 :::
 
 ## Cluster evaluation
 :::
+

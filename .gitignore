@@ -91,3 +91,5 @@ assembly/multiqc*
 # logs
 assembly/logs/*
 
+# DS store
+assembly/.DS_Store
