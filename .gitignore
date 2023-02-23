@@ -48,6 +48,9 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+# DS Store
+.DS_Store
+
 # full original environmental data sets
 analysis/data/brazil_clim/*
 analysis/data/forest_cover/*
