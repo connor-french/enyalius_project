@@ -96,3 +96,6 @@ assembly/logs/*
 
 # DS store
 assembly/.DS_Store
+
+# images for lab notebook
+images/

@@ -6,7 +6,7 @@ format:
 editor: visual
 ---
 
-This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on determining the appropriate clustering threshold. Thresholds of 0.90, 0.92, 0.94, 0.96, and 0.98 were considered. To determine the impact of batch effects, we are:
+This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on assessing the presence of batch effects and determining the appropriate clustering threshold. To determine the impact of batch effects, I am:
 
 -   plotting heterozygosity per plate, per species
 
@@ -14,9 +14,9 @@ This report outlines quality control (QC) assessments performed on *Enyalius* `i
 
 -   including a visualization of a PCA that includes the plate number per species
 
-For the batch effect analysis, we're arbitrarily using the cluster threshold of 0.94. These values may vary a little bit from the optimal clustering threshold to be determined, but shouldn't impact any conclusions.
+For the batch effect analysis, I'm arbitrarily using the cluster threshold of 0.94. These values may vary a little bit from the optimal clustering threshold to be determined, but shouldn't impact any conclusions.
 
-To determine the appropriate clustering threshold, we are following [McCartney-Melstad et al. 2019](https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.13029)'s workflow, which includes the following steps:
+To determine the appropriate clustering threshold, I am following [McCartney-Melstad et al. 2019](https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.13029)'s workflow, which includes the following steps:
 
 -   Genetic diversity (heterozygosity \~ number of SNPs recovered) 
 
@@ -28,9 +28,9 @@ To determine the appropriate clustering threshold, we are following [McCartney-M
 
 -   Phylogenetic resolution
 
-Also, as a sanity check, the error rate should be on the order of 0.001 and heterozygosity should be on the order of 0.01.
+Also, as a sanity check, the error rate should be on the order of 0.001 and heterozygosity should be on the order of 0.01. I am considering clustering thresholds of 0.90, 0.92, 0.94, 0.96, and 0.98.
 
-Note, *ipyrad* no longer outputs paralog flags, so we are not performing the original first step, visualizing the fraction of inferred paralogs.
+Note, `ipyrad` no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs.
 
 ```{r}
 #| label: r-setup
@@ -42,12 +42,15 @@ library(tidyverse)
 library(reticulate)
 
 source(here("assembly", "scripts", "read_ipyrad_stats.R"))
+source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
 
 use_condaenv(condaenv = "enyaliuspy")
 
 # read in localities
 locs <- read_csv(here("analysis", "data", "enyalius_locs.csv"))
 
+# snps filepath for missingness matrix
+snps_path_94 <- here("assembly", "full", "clust94_outfiles", "clust94.snps.hdf5")
 ```
 
 ```{python}
@@ -89,9 +92,6 @@ locs_stats_94 <- left_join(
   # don't want outgroups
   filter(!is.na(plate),
          species %in% c("cat", "ihe", "per", "pic")) 
-
-# snps filepath for missingness matrix
-snps_path_94 <- here("assembly", "full", "clust94_outfiles", "clust94.snps.hdf5")
 
 ```
 
@@ -155,15 +155,14 @@ locs_stats_94 %>%
 
 ## Missingness
 
-I'm using *ipyrad* to calculate allele sharing among samples and visualize as a heat map. Alleles should be shared most within species and shouldn't be structured by plate number.
+I'm using `ipyrad` to calculate allele sharing among samples and visualize as a heat map. Alleles should be shared most within species and shouldn't be structured by plate number.
 
-In the first iteration, there are a couple outlier individuals (*per_bana_CTMZ03943* and *cat_cam_PEU322*). These individuals also had a low number of reads and recovered loci. We have multiple individuals from each locality, so we're getting rid of them for future analyses.
+In the first iteration, there are a couple outlier individuals (*per_bana_CTMZ03943* and *cat_cam_PEU322*). These individuals also had a low number of reads and recovered loci. I have multiple individuals from each locality, so I'm getting rid of them for future analyses.
 
 ```{python}
 #| label: sharing-calculation
 #| message: false
 #| output: false
-#| cache: true
 
 # this takes a while. I'd write it to file and read it in if you plan on running this multiple times
 share = Sharing(
@@ -212,7 +211,7 @@ legend(x="left", legend=c("low", "medium", "high"),
      fill=colorRampPalette(RColorBrewer::brewer.pal(8, "Oranges"))(3))
 ```
 
-There appears to be some within-species variation, but it's not due to a batch effect. We visualized *E. pictus* and *E. iheringii* because they have individuals spread across plates.
+There appears to be some within-species variation, but it's not due to a batch effect. I visualized *E. pictus* and *E. iheringii* because they have individuals spread across plates.
 
 ```{r}
 #| label: pictus-iheringii-outliers
@@ -253,8 +252,214 @@ locs_sdf_94 %>%
 ```
 
 ## PCA
+
+I'm using `ipyrad` to conduct per-species PCAs. I'm looking for outliers according to their plate.
+
+I'm using a minimum coverage of 50% per locus to minimize the effect of missing data and subsampling a single SNP per locus to reduce physical linkage.
+
+Based on the first four PC axes, there is no bias in genetic diversity by plate number.
+
+```{python}
+#| label: pca-create-imap
+
+# create an imap for conducting PCA per species
+species_list = ["catenatus", "iheringii", "perditus", "pictus"]
+
+id_df = r.locs_sdf_94[["species", "id_code"]]
+id_df = id_df[id_df["species"].isin(species_list)]
+
+imap = {}
+for i in species_list:
+  imap[i] = id_df["id_code"][id_df["species"] == i].tolist()
+
+# require that 50% of samples have data in each group
+minmap = {i: 0.5 for i in imap}
+```
+
+```{python}
+#| label: pca-run
+#| output: false
+#| cache: true
+#| collapse: true
+
+# this could be a loop, but it's only four species and I'm lazy
+
+# catenatus
+imap_cat = {"catenatus": imap["catenatus"]}
+
+pca_cat = ipa.pca(
+    data=r.snps_path_94,
+    imap=imap_cat,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_cat.run()
+
+# iheringii
+imap_ihe = {"iheringii": imap["iheringii"]}
+
+pca_ihe = ipa.pca(
+    data=r.snps_path_94,
+    imap=imap_ihe,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_ihe.run()
+
+# perditus
+imap_per = {"perditus": imap["perditus"]}
+
+pca_per = ipa.pca(
+    data=r.snps_path_94,
+    imap=imap_per,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_per.run()
+
+# pictus
+imap_pic = {"pictus": imap["pictus"]}
+
+pca_pic = ipa.pca(
+    data=r.snps_path_94,
+    imap=imap_pic,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_pic.run()
+
+```
+
+::: panel-tabset
+## E. catenatus
+
+```{r}
+#| label: pca-plots-catenatus
+#| layout-ncol: 2
+
+plot_pca(
+  py$pca_cat,
+  locs_df = locs,
+  species_name = "catenatus",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_cat,
+  locs_df = locs,
+  y = "PC_3",
+  species_name = "catenatus",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_cat,
+  locs_df = locs,
+  y = "PC_4",
+  species_name = "catenatus",
+  color_var = "plate"
+)
+```
+
+## E. iheringii
+
+```{r}
+#| label: pca-plots-iheringii
+#| layout-ncol: 2
+
+plot_pca(
+  py$pca_ihe,
+  locs_df = locs,
+  species_name = "iheringii",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_ihe,
+  locs_df = locs,
+  y = "PC_3",
+  species_name = "iheringii",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_ihe,
+  locs_df = locs,
+  y = "PC_4",
+  species_name = "iheringii",
+  color_var = "plate"
+)
+```
+
+## E. perditus
+
+```{r}
+#| label: pca-plots-perditus
+#| layout-ncol: 2
+
+plot_pca(
+  py$pca_per,
+  locs_df = locs,
+  species_name = "perditus",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_per,
+  locs_df = locs,
+  y = "PC_3",
+  species_name = "perditus",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_per,
+  locs_df = locs,
+  y = "PC_4",
+  species_name = "perditus",
+  color_var = "plate"
+)
+```
+
+## E. pictus
+
+```{r}
+#| label: pca-plots-pictus
+#| layout-ncol: 2
+
+plot_pca(
+  py$pca_pic,
+  locs_df = locs,
+  species_name = "pictus",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_pic,
+  locs_df = locs,
+  y = "PC_3",
+  species_name = "pictus",
+  color_var = "plate"
+)
+
+plot_pca(
+  py$pca_pic,
+  locs_df = locs,
+  y = "PC_4",
+  species_name = "pictus",
+  color_var = "plate"
+)
+```
+:::
 :::
 
 ## Cluster evaluation
 :::
-
