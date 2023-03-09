@@ -4,33 +4,14 @@ format:
   html:
     code-fold: true
 editor: visual
+bibliography: references.bib
 ---
 
-This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on assessing the presence of batch effects and determining the appropriate clustering threshold. To determine the impact of batch effects, I am:
+This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on assessing the presence of batch effects and determining the appropriate clustering threshold.
 
--   plotting heterozygosity per plate, per species
+For the batch effect analysis, I'm arbitrarily using the cluster threshold of 0.94. These values may vary a little bit from the optimal clustering threshold to be determined, but shouldn't impact any conclusions. I am considering clustering thresholds of 0.90, 0.92, 0.94, 0.96, and 0.98.
 
--   examining missingness per plate, per species
-
--   including a visualization of a PCA that includes the plate number per species
-
-For the batch effect analysis, I'm arbitrarily using the cluster threshold of 0.94. These values may vary a little bit from the optimal clustering threshold to be determined, but shouldn't impact any conclusions.
-
-To determine the appropriate clustering threshold, I am following [McCartney-Melstad et al. 2019](https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.13029)'s workflow, which includes the following steps:
-
--   Genetic diversity (heterozygosity \~ number of SNPs recovered) 
-
--   Cumulative variance explained by major principal components
-
--   Relationship between missingness and genetic divergence
-
--   Slope of isolation by distance
-
--   Phylogenetic resolution
-
-Also, as a sanity check, the error rate should be on the order of 0.001 and heterozygosity should be on the order of 0.01. I am considering clustering thresholds of 0.90, 0.92, 0.94, 0.96, and 0.98.
-
-Note, `ipyrad` no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs.
+Also, as a sanity check, the error rate should be on the order of 0.001 and heterozygosity should be on the order of 0.01.
 
 ```{r}
 #| label: r-setup
@@ -45,6 +26,8 @@ source(here("assembly", "scripts", "read_ipyrad_stats.R"))
 source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
 
 use_condaenv(condaenv = "enyaliuspy")
+
+source_python(here("assembly", "scripts", "create_imap.py"))
 
 # read in localities
 locs <- read_csv(here("analysis", "data", "enyalius_locs.csv"))
@@ -72,6 +55,14 @@ import matplotlib.pyplot as plt
 ## Batch effects
 
 The *Enyalius* individuals were sequenced across multiple plates, which can result in non-biological variation among samples due to library prep and sequencing artifacts. Here, I'm visualizing heterozygosity, missingness, and genetic structure (PCA) patterns across sequencing plates and species.
+
+To determine the impact of batch effects, I am:
+
+-   plotting heterozygosity per plate, per species
+
+-   examining missingness per plate, per species
+
+-   including a visualization of a PCA that includes the plate number per species
 
 ```{r}
 #| label: batch-read-data
@@ -253,7 +244,7 @@ locs_sdf_94 %>%
 
 ## PCA
 
-I'm using `ipyrad` to conduct per-species PCAs. I'm looking for outliers according to their plate.
+I'm using `ipyrad` (@eaton2020) to conduct per-species PCAs. I'm looking for outliers according to their plate.
 
 I'm using a minimum coverage of 50% per locus to minimize the effect of missing data and subsampling a single SNP per locus to reduce physical linkage.
 
@@ -263,14 +254,10 @@ Based on the first four PC axes, there is no bias in genetic diversity by plate 
 #| label: pca-create-imap
 
 # create an imap for conducting PCA per species
-species_list = ["catenatus", "iheringii", "perditus", "pictus"]
+species_list = ["cat", "ihe", "per", "pic"]
 
-id_df = r.locs_sdf_94[["species", "id_code"]]
-id_df = id_df[id_df["species"].isin(species_list)]
+imap = create_imap(splist=species_list, ip_df=r.ip_stats_94)
 
-imap = {}
-for i in species_list:
-  imap[i] = id_df["id_code"][id_df["species"] == i].tolist()
 
 # require that 50% of samples have data in each group
 minmap = {i: 0.5 for i in imap}
@@ -285,7 +272,7 @@ minmap = {i: 0.5 for i in imap}
 # this could be a loop, but it's only four species and I'm lazy
 
 # catenatus
-imap_cat = {"catenatus": imap["catenatus"]}
+imap_cat = {"cat": imap["cat"]}
 
 pca_cat = ipa.pca(
     data=r.snps_path_94,
@@ -298,7 +285,7 @@ pca_cat = ipa.pca(
 pca_cat.run()
 
 # iheringii
-imap_ihe = {"iheringii": imap["iheringii"]}
+imap_ihe = {"ihe": imap["ihe"]}
 
 pca_ihe = ipa.pca(
     data=r.snps_path_94,
@@ -311,7 +298,7 @@ pca_ihe = ipa.pca(
 pca_ihe.run()
 
 # perditus
-imap_per = {"perditus": imap["perditus"]}
+imap_per = {"per": imap["per"]}
 
 pca_per = ipa.pca(
     data=r.snps_path_94,
@@ -324,7 +311,7 @@ pca_per = ipa.pca(
 pca_per.run()
 
 # pictus
-imap_pic = {"pictus": imap["pictus"]}
+imap_pic = {"pic": imap["pic"]}
 
 pca_pic = ipa.pca(
     data=r.snps_path_94,
@@ -348,7 +335,7 @@ pca_pic.run()
 plot_pca(
   py$pca_cat,
   locs_df = locs,
-  species_name = "catenatus",
+  species_name = "cat",
   color_var = "plate"
 )
 
@@ -356,7 +343,7 @@ plot_pca(
   py$pca_cat,
   locs_df = locs,
   y = "PC_3",
-  species_name = "catenatus",
+  species_name = "cat",
   color_var = "plate"
 )
 
@@ -364,7 +351,7 @@ plot_pca(
   py$pca_cat,
   locs_df = locs,
   y = "PC_4",
-  species_name = "catenatus",
+  species_name = "cat",
   color_var = "plate"
 )
 ```
@@ -378,7 +365,7 @@ plot_pca(
 plot_pca(
   py$pca_ihe,
   locs_df = locs,
-  species_name = "iheringii",
+  species_name = "ihe",
   color_var = "plate"
 )
 
@@ -386,7 +373,7 @@ plot_pca(
   py$pca_ihe,
   locs_df = locs,
   y = "PC_3",
-  species_name = "iheringii",
+  species_name = "ihe",
   color_var = "plate"
 )
 
@@ -394,7 +381,7 @@ plot_pca(
   py$pca_ihe,
   locs_df = locs,
   y = "PC_4",
-  species_name = "iheringii",
+  species_name = "ihe",
   color_var = "plate"
 )
 ```
@@ -408,7 +395,7 @@ plot_pca(
 plot_pca(
   py$pca_per,
   locs_df = locs,
-  species_name = "perditus",
+  species_name = "per",
   color_var = "plate"
 )
 
@@ -416,7 +403,7 @@ plot_pca(
   py$pca_per,
   locs_df = locs,
   y = "PC_3",
-  species_name = "perditus",
+  species_name = "per",
   color_var = "plate"
 )
 
@@ -424,7 +411,7 @@ plot_pca(
   py$pca_per,
   locs_df = locs,
   y = "PC_4",
-  species_name = "perditus",
+  species_name = "per",
   color_var = "plate"
 )
 ```
@@ -438,7 +425,7 @@ plot_pca(
 plot_pca(
   py$pca_pic,
   locs_df = locs,
-  species_name = "pictus",
+  species_name = "pic",
   color_var = "plate"
 )
 
@@ -446,7 +433,7 @@ plot_pca(
   py$pca_pic,
   locs_df = locs,
   y = "PC_3",
-  species_name = "pictus",
+  species_name = "pic",
   color_var = "plate"
 )
 
@@ -454,7 +441,7 @@ plot_pca(
   py$pca_pic,
   locs_df = locs,
   y = "PC_4",
-  species_name = "pictus",
+  species_name = "pic",
   color_var = "plate"
 )
 ```
@@ -462,4 +449,79 @@ plot_pca(
 :::
 
 ## Cluster evaluation
+
+To determine the appropriate clustering threshold, I am following @mccartney-melstad2019's workflow, which includes the following steps:
+
+-   Genetic diversity (heterozygosity \~ number of SNPs recovered)
+
+-   Cumulative variance explained by major principal components
+
+-   Relationship between missingness and genetic divergence
+
+-   Slope of isolation by distance
+
+-   Phylogenetic resolution
+
+Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs.
+
+```{r}
+#| label: read-stats-files
+#| message: false
+#| warning: false
+
+ip_stats_files <- c(
+ clust90 = here("assembly", "full", "full_clust90_outfiles", "full_clust90_stats.txt"),
+ clust92 = here("assembly", "full", "clust92_outfiles", "clust92_stats.txt"),
+ clust94 = here("assembly", "full", "clust94_outfiles", "clust94_stats.txt"),
+ clust96 = here("assembly", "full", "clust96_outfiles", "clust96_stats.txt"),
+ clust98 = here("assembly", "full", "clust98_outfiles", "clust98_stats.txt")
+)
+
+ip_stats <- map_df(ip_stats_files, read_ipyrad_stats, .id = "clust_threshold")
+
+# specify outgroups for filtering
+outgroups <- c("agr", "alo", "uva")
+
+total_snps <- map_df(ip_stats_files, read_total_snps) %>% 
+  pivot_longer(everything(), names_to = "clust_threshold", values_to = "total_snps")
+
+```
+
+::: panel-tabset
+## Genetic diversity
+
+When clustering thresholds are too low, paralogs get clumped together. In the absence of bioinformatic filters, this would lead to higher genetic diversity, but in practice bioinformatic filters remove these reads, which leads to a reduction in genetic diversity. So, clustering thresholds that are too low lead to lower inferred genetic diversity/heterozygosity. This also should lead to a similar pattern in the number of SNPs. Therefore, an optimal clustering threshold should lead to maximal values for each.
+
+It looks
+
+```{r}
+#| label: heterozygosity-plots
+
+ip_stats %>% 
+  filter(!(species %in% outgroups)) %>% 
+  ggplot(aes(x = clust_threshold, y = hetero_est)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~species)
+
+```
+
+```{r}
+#| label: total-snps-plot
+
+total_snps %>% 
+  ggplot(aes(x = clust_threshold, y = total_snps)) +
+  geom_point(size = 6) +
+  theme_bw()
+
+```
+
+## PCA
+
+## Missingness
+
+## Isolation by distance
+
+## Phylogenetic resolution
+:::
 :::

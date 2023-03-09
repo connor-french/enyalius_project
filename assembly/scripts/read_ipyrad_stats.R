@@ -26,3 +26,11 @@ read_ipyrad_stats <- function(path) {
     mutate(species = str_extract(id_code, "^[^_]+(?=_)"))
 }
 
+# function to extrat the total number of SNPs from the stats file
+read_total_snps <- function(path) {
+  t <- read_lines(path)
+  ss <- t[grep("total_filtered_loci", t)]
+  total_snps <- str_split_1(ss, " +")[4]
+  return(as.integer(total_snps))
+}
+
