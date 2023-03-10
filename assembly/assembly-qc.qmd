@@ -29,8 +29,13 @@ use_condaenv(condaenv = "enyaliuspy")
 
 source_python(here("assembly", "scripts", "create_imap.py"))
 
+low_cov_inds <- c("cat_jibo_MTR18418", "cat_jeq_MTR17278", "cat_uba_PEU545", "cat_jib_LG1377", "cat_itc_MTR11831", "cat_itc_MTR11833", "cat_ruib_MTR18434", "cat_jibo_LG1377", "cat_jeq_MTR17431", "ihe_saop_CTMZ13066", "ihe_ipor_CTMZ11224", "ihe_nhae_CTMZ13229", "ihe_smig_CTMZ03618", "ihe_nhae_CTMZ13228")
+
 # read in localities
-locs <- read_csv(here("analysis", "data", "enyalius_locs.csv"))
+locs <- read_csv(here("analysis", "data", "enyalius_locs.csv")) %>% 
+  ## filter out low coverage individuals
+  filter(!(id_code %in% low_cov_inds),
+         is.na(obs) | obs != "Excluded low coverage")
 
 # snps filepath for missingness matrix
 snps_path_94 <- here("assembly", "full", "clust94_outfiles", "clust94.snps.hdf5")
@@ -256,7 +261,7 @@ Based on the first four PC axes, there is no bias in genetic diversity by plate 
 # create an imap for conducting PCA per species
 species_list = ["cat", "ihe", "per", "pic"]
 
-imap = create_imap(splist=species_list, ip_df=r.ip_stats_94)
+imap = create_imap(splist=species_list, locs_df=r.locs_stats_94)
 
 
 # require that 50% of samples have data in each group
@@ -517,6 +522,205 @@ total_snps %>%
 ```
 
 ## PCA
+
+
+
+```{r}
+#| label: read-locs-snps-clust
+
+# only want ingroup species.
+locs_ingroup <- locs %>% 
+         filter(species %in% c("catenatus", "iheringii", "perditus", "pictus"))
+
+# clust90 is named full_clust90, so have to specify that separately
+clust_thresh <- c(92, 94, 96, 98)
+snps_paths <- 
+  here("assembly", "full",  
+         paste0("clust", clust_thresh, "_outfiles"), 
+         paste0("clust", clust_thresh, ".snps.hdf5"))
+
+snps_path_90 <- here("assembly", "full", "full_clust90_outfiles", "full_clust90.snps.hdf5")
+
+names(snps_paths) <- paste0("clust", clust_thresh)
+```
+
+```{python}
+#| label: create-imap-cluster
+#| eval: false
+#| echo: false
+
+# create an imap for conducting PCA per species
+species_list = ["catenatus", "iheringii", "perditus", "pictus"]
+
+imap = create_imap(splist=species_list, locs_df=r.locs_ingroup)
+
+# require that 50% of samples have data in each group
+minmap = {i: 0.5 for i in imap}
+```
+
+I'm splitting the PCAs by species and evaluating the clusters per-species.
+
+::: panel-tabset
+## E. catenatus
+
+```{python}
+#| label: clust-pcas-catenatus
+
+# catenatus
+imap_cat = {"catenatus": imap["catenatus"]}
+
+pca_cat_90 = ipa.pca(
+    data=r.snps_path_90,
+    imap=imap_cat,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_cat_90.run()
+
+pca_cat_92 = ipa.pca(
+    data=r.snps_paths[0],
+    imap=imap_cat,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_cat_92.run()
+
+pca_cat_94 = ipa.pca(
+    data=r.snps_paths[1],
+    imap=imap_cat,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_cat_94.run()
+
+pca_cat_96 = ipa.pca(
+    data=r.snps_paths[2],
+    imap=imap_cat,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_cat_96.run()
+
+pca_cat_98 = ipa.pca(
+    data=r.snps_paths[3],
+    imap=imap_cat,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_cat_98.run()
+```
+
+```{r}
+#| label: plot-pc_cumvar-catenatus
+pca_obj_cat <- list(
+  clust90 = py$pca_cat_90,
+  clust92 = py$pca_cat_92,
+  clust94 = py$pca_cat_94,
+  clust96 = py$pca_cat_96,
+  clust98 = py$pca_cat_98
+)
+
+pca_cumvar_plots <- plot_cumvar(pca_obj_cat)
+
+pca_cumvar_plots
+
+```
+
+
+## E. iheringii
+
+```{python}
+#| label: clust-pcas-iheringii
+
+# iheringii
+imap_ihe = {"iheringii": imap["iheringii"]}
+
+pca_ihe_90 = ipa.pca(
+    data=r.snps_path_90,
+    imap=imap_ihe,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_ihe_90.run()
+
+pca_ihe_92 = ipa.pca(
+    data=r.snps_paths[0],
+    imap=imap_ihe,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_ihe_92.run()
+
+pca_ihe_94 = ipa.pca(
+    data=r.snps_paths[1],
+    imap=imap_ihe,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_ihe_94.run()
+
+pca_ihe_96 = ipa.pca(
+    data=r.snps_paths[2],
+    imap=imap_ihe,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_ihe_96.run()
+
+pca_ihe_98 = ipa.pca(
+    data=r.snps_paths[3],
+    imap=imap_ihe,
+    minmap=minmap,
+    mincov=0.75,
+    impute_method="sample",
+)
+
+pca_ihe_98.run()
+```
+
+```{r}
+#| label: plot-pc_cumvar-iheringii
+pca_obj_ihe <- list(
+  clust90 = py$pca_ihe_90,
+  clust92 = py$pca_ihe_92,
+  clust94 = py$pca_ihe_94,
+  clust96 = py$pca_ihe_96,
+  clust98 = py$pca_ihe_98
+)
+
+pca_cumvar_plots <- plot_cumvar(pca_obj_ihe)
+
+pca_cumvar_plots
+
+```
+
+
+## E. perditus
+
+## E. pictus
+:::
+
+```{}
+
+```
 
 ## Missingness
 
