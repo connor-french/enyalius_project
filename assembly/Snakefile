@@ -5,7 +5,7 @@ FASTQS = glob_wildcards("fastq/{condition}.fastq.gz").condition #list of fastq f
 
 rule all:
   input:
-    "run_ipyrad.done"
+    "full/sharing_batch/sharing_batch.csv"
 
 rule run_fastqc:
   input:
@@ -55,3 +55,15 @@ rule rename_clust94:
     "full/clust94_clust_0.94"
   shell:
     "rename {input} {output}"
+
+# calculate sharing matrices for different clustering thresholds
+rule run_sharing_batch:
+  input:
+    config["SNPPATHS"]
+  output:
+    config["SHAREBATCHOUT"]
+  script:
+    "scripts/run_sharing.py"
+
+
+

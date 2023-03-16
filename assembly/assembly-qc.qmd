@@ -21,21 +21,36 @@ Also, as a sanity check, the error rate should be on the order of 0.001 and hete
 library(here)
 library(tidyverse)
 library(reticulate)
+library(sf)
 
 source(here("assembly", "scripts", "read_ipyrad_stats.R"))
 source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
+source(here("assembly", "scripts", "share_to_vec.R"))
+source(here("assembly", "scripts", "calc_gendist.R"))
 
 use_condaenv(condaenv = "enyaliuspy")
 
 source_python(here("assembly", "scripts", "create_imap.py"))
+source_python(here("assembly", "scripts", "run_ipyrad_pca.py"))
+source_python(here("assembly", "scripts", "run_sharing.py"))
 
-low_cov_inds <- c("cat_jibo_MTR18418", "cat_jeq_MTR17278", "cat_uba_PEU545", "cat_jib_LG1377", "cat_itc_MTR11831", "cat_itc_MTR11833", "cat_ruib_MTR18434", "cat_jibo_LG1377", "cat_jeq_MTR17431", "ihe_saop_CTMZ13066", "ihe_ipor_CTMZ11224", "ihe_nhae_CTMZ13229", "ihe_smig_CTMZ03618", "ihe_nhae_CTMZ13228")
+low_cov_inds <- c("cat_jibo_MTR18418", "cat_jeq_MTR17278", "cat_uba_PEU545", "cat_jib_LG1377", "cat_itc_MTR11831", "cat_itc_MTR11833", "cat_ruib_MTR18434", "cat_jibo_LG1377", "cat_jeq_MTR17431", "ihe_saop_CTMZ13066", "ihe_ipor_CTMZ11224", "ihe_nhae_CTMZ13229", "ihe_smig_CTMZ03618", "ihe_nhae_CTMZ13228", "per_petrop_MTR22755", "per_saop_UNIBAN0838", "per_petr_MTR22755", "per_saop_UNIBAN0883", "pic_tra_MTR13499", "pic_tra_MTR13500")
+
+# individuals found in the missingness analysis to contain low sequencing coverage and low numbers of loci
+bad_inds <- c("per_bana_CTMZ03943", "cat_cam_PEU322")
 
 # read in localities
 locs <- read_csv(here("analysis", "data", "enyalius_locs.csv")) %>% 
   ## filter out low coverage individuals
   filter(!(id_code %in% low_cov_inds),
          is.na(obs) | obs != "Excluded low coverage")
+
+# remove bad inds for analyses post-missingness assessment
+locs_nobad <- locs %>% 
+  filter(!(id_code %in% bad_inds))
+
+# cluster thresholds 
+clust_thresh <- c("clust88", "clust90", "clust92", "clust94", "clust96", "clust98")
 
 # snps filepath for missingness matrix
 snps_path_94 <- here("assembly", "full", "clust94_outfiles", "clust94.snps.hdf5")
@@ -78,7 +93,7 @@ ip_stats_94 <- read_ipyrad_stats(here("assembly", "full", "clust94_outfiles", "c
 
 locs_stats_94 <- left_join(
   ip_stats_94, 
-  locs,
+  locs_nobad,
   by = "id_code"
 ) %>% 
   # remove and rename duplicate columns
@@ -96,7 +111,7 @@ locs_stats_94 <- left_join(
 
 Heterozygosity varies across plates, but species mostly correspond with a single plate. For species sequenced across multiple plates, there doesn't appear to be plate effects.
 
-Error varies across plates in general and within species. We'll need to consider this for future analyses and may be able to account for it bioinformatically
+Error varies across plates in general and within species. I'll need to consider this for future analyses and may be able to account for it bioinformatically
 
 ```{r}
 #| label: heterozygosity-plots
@@ -251,7 +266,7 @@ locs_sdf_94 %>%
 
 I'm using `ipyrad` (@eaton2020) to conduct per-species PCAs. I'm looking for outliers according to their plate.
 
-I'm using a minimum coverage of 50% per locus to minimize the effect of missing data and subsampling a single SNP per locus to reduce physical linkage.
+I'm using a minimum coverage of 50% per locus to minimize the effect of missing data and subsampling a single SNP per locus to reduce physical linkage. `NA` plate numbers indicate a few individuals who had to have their FASTAs concatenated due to a data transfer error.
 
 Based on the first four PC axes, there is no bias in genetic diversity by plate number.
 
@@ -272,61 +287,12 @@ minmap = {i: 0.5 for i in imap}
 #| label: pca-run
 #| output: false
 #| cache: true
-#| collapse: true
 
-# this could be a loop, but it's only four species and I'm lazy
-
-# catenatus
-imap_cat = {"cat": imap["cat"]}
-
-pca_cat = ipa.pca(
-    data=r.snps_path_94,
-    imap=imap_cat,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_cat.run()
-
-# iheringii
-imap_ihe = {"ihe": imap["ihe"]}
-
-pca_ihe = ipa.pca(
-    data=r.snps_path_94,
-    imap=imap_ihe,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_ihe.run()
-
-# perditus
-imap_per = {"per": imap["per"]}
-
-pca_per = ipa.pca(
-    data=r.snps_path_94,
-    imap=imap_per,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_per.run()
-
-# pictus
-imap_pic = {"pic": imap["pic"]}
-
-pca_pic = ipa.pca(
-    data=r.snps_path_94,
-    imap=imap_pic,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_pic.run()
+pca_list = []
+for n in species_list:
+  pca = run_pca(species = n, snps_path = r.snps_path_94, imap = imap)
+  pca_list.append(pca)
+  
 
 ```
 
@@ -338,14 +304,14 @@ pca_pic.run()
 #| layout-ncol: 2
 
 plot_pca(
-  py$pca_cat,
+  py$pca_list[[1]],
   locs_df = locs,
   species_name = "cat",
   color_var = "plate"
 )
 
 plot_pca(
-  py$pca_cat,
+  py$pca_list[[1]],
   locs_df = locs,
   y = "PC_3",
   species_name = "cat",
@@ -353,7 +319,7 @@ plot_pca(
 )
 
 plot_pca(
-  py$pca_cat,
+  py$pca_list[[1]],
   locs_df = locs,
   y = "PC_4",
   species_name = "cat",
@@ -368,14 +334,14 @@ plot_pca(
 #| layout-ncol: 2
 
 plot_pca(
-  py$pca_ihe,
+  py$pca_list[[2]],
   locs_df = locs,
   species_name = "ihe",
   color_var = "plate"
 )
 
 plot_pca(
-  py$pca_ihe,
+  py$pca_list[[2]],
   locs_df = locs,
   y = "PC_3",
   species_name = "ihe",
@@ -383,7 +349,7 @@ plot_pca(
 )
 
 plot_pca(
-  py$pca_ihe,
+  py$pca_list[[2]],
   locs_df = locs,
   y = "PC_4",
   species_name = "ihe",
@@ -398,14 +364,14 @@ plot_pca(
 #| layout-ncol: 2
 
 plot_pca(
-  py$pca_per,
+  py$pca_list[[3]],
   locs_df = locs,
   species_name = "per",
   color_var = "plate"
 )
 
 plot_pca(
-  py$pca_per,
+  py$pca_list[[3]],
   locs_df = locs,
   y = "PC_3",
   species_name = "per",
@@ -413,7 +379,7 @@ plot_pca(
 )
 
 plot_pca(
-  py$pca_per,
+  py$pca_list[[3]],
   locs_df = locs,
   y = "PC_4",
   species_name = "per",
@@ -428,14 +394,14 @@ plot_pca(
 #| layout-ncol: 2
 
 plot_pca(
-  py$pca_pic,
+  py$pca_list[[4]],
   locs_df = locs,
   species_name = "pic",
   color_var = "plate"
 )
 
 plot_pca(
-  py$pca_pic,
+  py$pca_list[[4]],
   locs_df = locs,
   y = "PC_3",
   species_name = "pic",
@@ -443,7 +409,7 @@ plot_pca(
 )
 
 plot_pca(
-  py$pca_pic,
+  py$pca_list[[4]],
   locs_df = locs,
   y = "PC_4",
   species_name = "pic",
@@ -465,9 +431,7 @@ To determine the appropriate clustering threshold, I am following @mccartney-mel
 
 -   Slope of isolation by distance
 
--   Phylogenetic resolution
-
-Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs.
+Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs. In addition, phylogenetic signal did not do a great job of discriminating among clusters, so I am not going to use it here.
 
 ```{r}
 #| label: read-stats-files
@@ -475,11 +439,12 @@ Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not perform
 #| warning: false
 
 ip_stats_files <- c(
- clust90 = here("assembly", "full", "full_clust90_outfiles", "full_clust90_stats.txt"),
- clust92 = here("assembly", "full", "clust92_outfiles", "clust92_stats.txt"),
- clust94 = here("assembly", "full", "clust94_outfiles", "clust94_stats.txt"),
- clust96 = here("assembly", "full", "clust96_outfiles", "clust96_stats.txt"),
- clust98 = here("assembly", "full", "clust98_outfiles", "clust98_stats.txt")
+  clust88 = here("assembly", "full", "clust88_outfiles", "clust88_stats.txt"),
+  clust90 = here("assembly", "full", "full_clust90_outfiles", "full_clust90_stats.txt"),
+  clust92 = here("assembly", "full", "clust92_outfiles", "clust92_stats.txt"),
+  clust94 = here("assembly", "full", "clust94_outfiles", "clust94_stats.txt"),
+  clust96 = here("assembly", "full", "clust96_outfiles", "clust96_stats.txt"),
+  clust98 = here("assembly", "full", "clust98_outfiles", "clust98_stats.txt")
 )
 
 ip_stats <- map_df(ip_stats_files, read_ipyrad_stats, .id = "clust_threshold")
@@ -495,20 +460,33 @@ total_snps <- map_df(ip_stats_files, read_total_snps) %>%
 ::: panel-tabset
 ## Genetic diversity
 
-When clustering thresholds are too low, paralogs get clumped together. In the absence of bioinformatic filters, this would lead to higher genetic diversity, but in practice bioinformatic filters remove these reads, which leads to a reduction in genetic diversity. So, clustering thresholds that are too low lead to lower inferred genetic diversity/heterozygosity. This also should lead to a similar pattern in the number of SNPs. Therefore, an optimal clustering threshold should lead to maximal values for each.
+When clustering thresholds are too low, paralogs get clumped together. This leads to higher genetic diversity. McCartney-Melstad et al. assume that bioinformatic filters remove paralogous loci by flagging them, but *ipyrad* doesn't do this, apart from the `max_alleles_consens` filter. So, clustering thresholds that are too low lead to higher inferred genetic diversity/heterozygosity. This should also lead to higher numbers of total SNPs. Therefore, an optimal clustering threshold should lead to lower heterozygosity and maximal numbers of SNPs.
 
-It looks
+> Results: I'm seeing a sharper decrease in heterozygosity after clust_thresh = 0.92, while SNP counts increase steadily. Additionally, a clust_thresh of 0.88 leads to outliers in heterozygosity. Based on this metric, I think a clust_thresh of 0.90 or 0.92 is appropriate.
 
 ```{r}
-#| label: heterozygosity-plots
+#| label: heterozygosity-plots-species
 
 ip_stats %>% 
   filter(!(species %in% outgroups)) %>% 
   ggplot(aes(x = clust_threshold, y = hetero_est)) +
   geom_boxplot() +
+  geom_jitter(alpha = 0.3, width = 0.2) +
   theme_bw() +
   facet_wrap(~species)
 
+```
+
+And not splitting by species.
+
+```{r}
+# label: heterozygosity-plots-all
+ip_stats %>% 
+  filter(!(species %in% outgroups)) %>% 
+  ggplot(aes(x = clust_threshold, y = hetero_est)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.3, width = 0.2) +
+  theme_bw()
 ```
 
 ```{r}
@@ -523,25 +501,34 @@ total_snps %>%
 
 ## PCA
 
+When true orthologues are oversplit, there should be a reduction in the divergence of the most different groups, leading to a decrease in the variance accounted for in the first few principal components.
 
+I decided to use the first eight principal components due to likely strong population structure within species and find that, in general, variance explained decreases with clustering threshold. There is no increase prior to the decrease, also indicating that I'm either exploring cluster thresholds that are too high. Performing single-species assemblies could also solve this, but I want comparable diversity values across species and conducting different assemblies for each species may introduce non-biological biases in diversity metrics across species that I don't want.
+
+> Results: Across species and as a whole, the cumulative variance explained is steady up until a 0.92 clustering threshold, where it sharply decreasing afterwards, indicating a clustering threshold of 0.92 or lower is preferable according to this metric.
 
 ```{r}
 #| label: read-locs-snps-clust
 
 # only want ingroup species.
-locs_ingroup <- locs %>% 
+locs_ingroup <- locs_nobad %>% 
          filter(species %in% c("catenatus", "iheringii", "perditus", "pictus"))
 
 # clust90 is named full_clust90, so have to specify that separately
-clust_thresh <- c(92, 94, 96, 98)
+clust_thresh_num <- c(92, 94, 96, 98)
 snps_paths <- 
   here("assembly", "full",  
-         paste0("clust", clust_thresh, "_outfiles"), 
-         paste0("clust", clust_thresh, ".snps.hdf5"))
+         paste0("clust", clust_thresh_num, "_outfiles"), 
+         paste0("clust", clust_thresh_num, ".snps.hdf5"))
+
+snps_path_88 <- here("assembly", "full", "clust88_outfiles", "clust88.snps.hdf5")
 
 snps_path_90 <- here("assembly", "full", "full_clust90_outfiles", "full_clust90.snps.hdf5")
 
-names(snps_paths) <- paste0("clust", clust_thresh)
+snps_paths <- c(snps_path_88, snps_path_90, snps_paths)
+
+names(snps_paths) <- clust_thresh
+
 ```
 
 ```{python}
@@ -565,167 +552,222 @@ I'm splitting the PCAs by species and evaluating the clusters per-species.
 
 ```{python}
 #| label: clust-pcas-catenatus
+#| cache: true
+#| output: false
 
-# catenatus
-imap_cat = {"catenatus": imap["catenatus"]}
+pca_list_cat = []
+for n in r.snps_paths:
+  pca = run_pca(species = "catenatus", snps_path = n, imap = imap)
+  pca_list_cat.append(pca)
 
-pca_cat_90 = ipa.pca(
-    data=r.snps_path_90,
-    imap=imap_cat,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_cat_90.run()
-
-pca_cat_92 = ipa.pca(
-    data=r.snps_paths[0],
-    imap=imap_cat,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_cat_92.run()
-
-pca_cat_94 = ipa.pca(
-    data=r.snps_paths[1],
-    imap=imap_cat,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_cat_94.run()
-
-pca_cat_96 = ipa.pca(
-    data=r.snps_paths[2],
-    imap=imap_cat,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_cat_96.run()
-
-pca_cat_98 = ipa.pca(
-    data=r.snps_paths[3],
-    imap=imap_cat,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_cat_98.run()
 ```
 
 ```{r}
 #| label: plot-pc_cumvar-catenatus
-pca_obj_cat <- list(
-  clust90 = py$pca_cat_90,
-  clust92 = py$pca_cat_92,
-  clust94 = py$pca_cat_94,
-  clust96 = py$pca_cat_96,
-  clust98 = py$pca_cat_98
-)
 
-pca_cumvar_plots <- plot_cumvar(pca_obj_cat)
+names(py$pca_list_cat) <- clust_thresh
+
+pca_cumvar_plots <- plot_cumvar(py$pca_list_cat)
 
 pca_cumvar_plots
 
 ```
-
 
 ## E. iheringii
 
 ```{python}
 #| label: clust-pcas-iheringii
+#| cache: true
+#| output: false
 
-# iheringii
-imap_ihe = {"iheringii": imap["iheringii"]}
+pca_list_ihe = []
+for n in r.snps_paths:
+  pca = run_pca(species = "iheringii", snps_path = n, imap = imap)
+  pca_list_ihe.append(pca)
+  
 
-pca_ihe_90 = ipa.pca(
-    data=r.snps_path_90,
-    imap=imap_ihe,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_ihe_90.run()
-
-pca_ihe_92 = ipa.pca(
-    data=r.snps_paths[0],
-    imap=imap_ihe,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_ihe_92.run()
-
-pca_ihe_94 = ipa.pca(
-    data=r.snps_paths[1],
-    imap=imap_ihe,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_ihe_94.run()
-
-pca_ihe_96 = ipa.pca(
-    data=r.snps_paths[2],
-    imap=imap_ihe,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_ihe_96.run()
-
-pca_ihe_98 = ipa.pca(
-    data=r.snps_paths[3],
-    imap=imap_ihe,
-    minmap=minmap,
-    mincov=0.75,
-    impute_method="sample",
-)
-
-pca_ihe_98.run()
 ```
 
 ```{r}
 #| label: plot-pc_cumvar-iheringii
-pca_obj_ihe <- list(
-  clust90 = py$pca_ihe_90,
-  clust92 = py$pca_ihe_92,
-  clust94 = py$pca_ihe_94,
-  clust96 = py$pca_ihe_96,
-  clust98 = py$pca_ihe_98
-)
+names(py$pca_list_ihe) <- clust_thresh
 
-pca_cumvar_plots <- plot_cumvar(pca_obj_ihe)
+pca_cumvar_plots <- plot_cumvar(py$pca_list_ihe)
 
 pca_cumvar_plots
 
 ```
 
-
 ## E. perditus
 
-## E. pictus
-:::
+```{python}
+#| label: clust-pcas-perditus
+#| cache: true
+#| output: false
 
-```{}
+pca_list_per = []
+for n in r.snps_paths:
+  pca = run_pca(species = "perditus", snps_path = n, imap = imap)
+  pca_list_per.append(pca)
+  
 
 ```
 
+```{r}
+#| label: plot-pc_cumvar-perditus
+names(py$pca_list_per) <- clust_thresh
+
+pca_cumvar_plots <- plot_cumvar(py$pca_list_per)
+
+pca_cumvar_plots
+
+```
+
+## E. pictus
+
+```{python}
+#| label: clust-pcas-pictus
+#| cache: true
+#| output: false
+
+
+pca_list_pic = []
+for n in r.snps_paths:
+  pca = run_pca(species = "pictus", snps_path = n, imap = imap)
+  pca_list_pic.append(pca)
+  
+
+```
+
+```{r}
+#| label: plot-pc_cumvar-pictus
+names(py$pca_list_pic) <- clust_thresh
+
+pca_cumvar_plots <- plot_cumvar(py$pca_list_pic)
+
+pca_cumvar_plots
+
+```
+
+## All
+
+```{python}
+#| label: clust-pcas-all
+#| cache: true
+#| output: false
+
+pca_list_all = []
+for n in r.snps_paths:
+  pca = run_pca(species = "all", snps_path = n, imap = imap)
+  pca_list_all.append(pca)
+  
+
+```
+
+```{r}
+#| label: plot-pc_cumvar-all
+names(py$pca_list_all) <- clust_thresh
+
+pca_cumvar_plots <- plot_cumvar(py$pca_list_all)
+
+pca_cumvar_plots
+
+```
+:::
+
 ## Missingness
+
+Over-splitting homologous loci into multiple loci is most likely to occur in genetically divergent individuals, leading to an increase in missingness when the locus is improperly split. Therefore, I expect the correlation to increase between genetic diversity and missingness when loci are being over-split.
+
+I'm counting the number of shared loci between individual pairs using `Sharing` from the `ipyrad.analysis` module. So, this will result in the opposite relationship with genetic diversity, compared with missingness (negative rather than positive).
+
+I'm estimating the pairwise genetic distance among individuals by calculating the Euclidean distance of PC-space between individuals, *sensu* @shirk2017. I'm using the PCAs conducted in the previous section and selecting the first 20 PCs as the information contained drops considerably after this.
+
+> Results: The correlation between missingness and genetic distance varies, then sharply increases after a 0.94 clustering threshold. So, a threshold less than 0.96 should be okay according to this metric.
+
+```{python}
+#| label: calc-sharing-clusts
+#| cache: true
+#| output: false
+
+# this takes a while. I'd write it to file and read it in if you plan on running this multiple times
+
+share_list = []
+for i in r.snps_paths:
+  share_sp = run_sharing(i)
+  share_list.append(share_sp)
+  return share_list
+
+```
+
+```{r}
+#| label: wrangle-vectors-clust
+
+# allele sharing vectors
+share_vec_list <-
+  map(
+    py$share_list,
+    \(x) share_to_vec(
+      share_obj = x,
+      pca_names = py$pca_list_all$clust90$names
+    )
+  )
+
+# genetic distance vectors
+pc_dist_list <- map(py$pca_list_all, calc_gendist)
+
+```
+
+```{r}
+#| label: gen-share-correlations
+
+dist_cor_vec <- map2_dbl(share_vec_list, pc_dist_list, cor) 
+
+
+dist_cor_df <- tibble(
+  clust_thresh = clust_thresh,
+  # easier to visualize decreasing correlation with positive cor. coef.
+  r = dist_cor_vec * -1
+)
+
+
+ggplot(dist_cor_df, aes(x = clust_thresh, y = r)) +
+  geom_point(size = 3) +
+  labs(y = "PCC between genetic \ndistance and missingness") +
+  theme_bw()
+```
 
 ## Isolation by distance
 
-## Phylogenetic resolution
+IBD predicts that genetic distance should increase with geographic distance within species. If orthologues are being over-split, this pattern breaks down, so the increase in genetic distance is lower than expect. So, the expected pattern is the slope of a regression (`lm`) to remain stable until the clustering threshold where over-splitting results in a weaker relationship between genetic distance and geographic distance.
+
+I'm using the `sf::st_distance()` function to calculate great circle distances rather than Euclidean distances.
+
+> Results: Slope decreases slightly as clustering threshold increases to 0.92, then sharply decreases. I'd say it's staying up until 0.92. 
+
+```{r}
+#| label: calc-geo-dist
+
+locs_latlong <- locs_ingroup %>% 
+  select(id_code, longitude, latitude) %>% 
+  st_as_sf(coords = c("longitude", "latitude"),
+           crs = 4326)
+
+geo_dist <- st_distance(locs_latlong)
+geo_dist <- geo_dist[lower.tri(geo_dist)]
+
+```
+
+```{r}
+#| label: geo-gen-cor
+
+gd_slope_df <- map_df(pc_dist_list, \(x) lm(x ~ geo_dist)$coefficients["geo_dist"]) %>% 
+  mutate(clust_thresh = clust_thresh)
+
+ggplot(gd_slope_df, aes(x = clust_thresh, y = geo_dist * 1000)) +
+  geom_point(size = 3) +
+  labs(y = "Increase in genetic \ndistance per kilometer") +
+  theme_bw()
+```
 :::
 :::
