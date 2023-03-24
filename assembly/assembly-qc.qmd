@@ -28,11 +28,6 @@ source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
 source(here("assembly", "scripts", "share_to_vec.R"))
 source(here("assembly", "scripts", "calc_gendist.R"))
 
-use_condaenv(condaenv = "enyaliuspy")
-
-source_python(here("assembly", "scripts", "create_imap.py"))
-source_python(here("assembly", "scripts", "run_ipyrad_pca.py"))
-source_python(here("assembly", "scripts", "run_sharing.py"))
 
 low_cov_inds <- c("cat_jibo_MTR18418", "cat_jeq_MTR17278", "cat_uba_PEU545", "cat_jib_LG1377", "cat_itc_MTR11831", "cat_itc_MTR11833", "cat_ruib_MTR18434", "cat_jibo_LG1377", "cat_jeq_MTR17431", "ihe_saop_CTMZ13066", "ihe_ipor_CTMZ11224", "ihe_nhae_CTMZ13229", "ihe_smig_CTMZ03618", "ihe_nhae_CTMZ13228", "per_petrop_MTR22755", "per_saop_UNIBAN0838", "per_petr_MTR22755", "per_saop_UNIBAN0883", "pic_tra_MTR13499", "pic_tra_MTR13500")
 
@@ -170,23 +165,28 @@ I'm using `ipyrad` to calculate allele sharing among samples and visualize as a 
 
 In the first iteration, there are a couple outlier individuals (*per_bana_CTMZ03943* and *cat_cam_PEU322*). These individuals also had a low number of reads and recovered loci. I have multiple individuals from each locality, so I'm getting rid of them for future analyses.
 
-```{python}
-#| label: sharing-calculation
+```{r}
+#| label: read-sharing-matrices
 #| message: false
-#| output: false
+#| warning: false
 
-# this takes a while. I'd write it to file and read it in if you plan on running this multiple times
-share = Sharing(
-    data=r.snps_path_94
-)
-share.run()
+share_paths <- list.files(here("assembly", "full", "share_batch"), full.names = TRUE)
 
+share_mats <- map(share_paths, read_csv) %>% 
+  map(as.matrix)
+
+for (i in 1:length(share_mats)) {
+  rownames(share_mats[[i]]) <- share_mats[[i]][,1]
+  share_mats[[i]] <- share_mats[[i]][,-1]
+  class(share_mats[[i]]) <- "numeric"
+}
 ```
+
 
 ```{r}
 #| label: sharing-plot
 heatmap(
-  as.matrix(py$share$sharing_matrix),
+  as.matrix(share_mats[[4]]),
   Rowv = NA,
   Colv = NA,
   symm = TRUE,
@@ -201,7 +201,7 @@ legend(x="left", legend=c("low", "medium", "high"),
 ```{r}
 #| label: sharing-plot-no-outliers
 
-sdf <- py$share$sharing_matrix %>% 
+sdf <- share_mats[[4]] %>% 
   as_tibble(rownames = "sample") %>% 
   select(-per_bana_CTMZ03943, -cat_cam_PEU322) %>% 
   filter(sample != "per_bana_CTMZ03943", sample != "cat_cam_PEU322") 

@@ -1,7 +1,14 @@
+# missing 90 because I ran an assembly for it first before running the other assemnblies
 CLUSTBRANCHES: [88, 92, 94, 96, 98]
+
+CLUSTTHRESH: [88, 92, 94, 96, 98]
+
+SPLONG: ["catenatus", "iheringii", "perditus", "pictus", "all"]
 
 SNPPATHS: ["full/clust88_outfiles/clust88.snps.hdf5", "full/full_clust90_outfiles/full_clust90.snps.hdf5", "full/clust92_outfiles/clust92.snps.hdf5", "full/clust94_outfiles/clust94.snps.hdf5", "full/clust96_outfiles/clust96.snps.hdf5", "full/clust98_outfiles/clust98.snps.hdf5"]
 
-SHAREBATCHOUT: ["full/share_batch/clust88_share.csv", "full/share_batch/clust90_share.csv", "full/share_batch/clust92_share.csv", "full/share_batch/clust94_share.csv", "full/share_batch/clust96_share.csv", "full/share_batch/clust98_share.csv"]
+SHAREBATCHOUT: ["full/share_batch/"]
 
-PCABATCHOUT: []
+PCABATCHOUT: ["full/pca_batch/"]
+
+PCACLUSTOUT: ["full/pca_clust/"]

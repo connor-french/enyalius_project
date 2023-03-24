@@ -5,7 +5,10 @@ FASTQS = glob_wildcards("fastq/{condition}.fastq.gz").condition #list of fastq f
 
 rule all:
   input:
-    "full/sharing_batch/sharing_batch.csv"
+    "scripts/process_locs.R",
+    batch_out = expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
+    clust_pc_out = expand("{folder}pcs_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESH"]),
+    clust_var_out = expand("{folder}var_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESH"])
 
 rule run_fastqc:
   input:
@@ -61,9 +64,31 @@ rule run_sharing_batch:
   input:
     config["SNPPATHS"]
   output:
-    config["SHAREBATCHOUT"]
+    expand("{folder}clust{thresh}_share.csv", folder = config["SHAREBATCHOUT"], thresh = config["CLUSTTHRESH"])
   script:
     "scripts/run_sharing.py"
+
+# remove poorly sequenced individuals
+rule process_locs:
+  output:
+    "processed_localities/locs_nobad.csv"
+  script:
+    "scripts/process_locs.R"
+
+# run PCAs for batch effects and clustering thresholds
+rule run_ipyrad_pca:
+  input:
+    config["SNPPATHS"]
+  params:
+    splist = config["SPLONG"],
+    clust_thresh = config["CLUSTTHRESH"],
+    batch_out = expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
+    pca_out = config["PCACLUSTOUT"]
+  output:
+    batch_out = expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
+    clust_pc_out = expand("{folder}pcs_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESH"]),
+    clust_var_out = expand("{folder}var_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESH"])
+  script: "scripts/run_ipyrad_pca.py"
 
 
 

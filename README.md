@@ -88,6 +88,9 @@ Directory and file guide:
 -   `assembly/`- files related to *Enyalius* RADseq assembly. This is
     going to be modified soon \* `man/`- folder to house documentation
     of functions if I turn this into a package
+    
+    -   `processed_localities/`- spreadsheets containing data about samples with locality data that were processed from the original raw CSV. 
+        -   `locs_nobad.csv`- all individuals that had poor sequencing or otherwise had something wrong with them removed
 
 -   `R/`- R scripts used for analysis
 
