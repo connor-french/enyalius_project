@@ -60,11 +60,11 @@ rule rename_clust94:
     "rename {input} {output}"
 
 # calculate sharing matrices for different clustering thresholds
-rule run_sharing_batch:
+rule run_sharing:
   input:
     config["SNPPATHS"]
   output:
-    expand("{folder}clust{thresh}_share.csv", folder = config["SHAREBATCHOUT"], thresh = config["CLUSTTHRESH"])
+    expand("{folder}clust{thresh}_share.csv", folder = config["SHAREOUT"], thresh = config["CLUSTTHRESH"])
   script:
     "scripts/run_sharing.py"
 
@@ -76,19 +76,26 @@ rule process_locs:
     "scripts/process_locs.R"
 
 # run PCAs for batch effects and clustering thresholds
+# I forgot to set seeds, so the PCA imputation will result in slightly different results from the publication. This will not change the interpretation.
+
 rule run_ipyrad_pca:
   input:
     config["SNPPATHS"]
   params:
     splist = config["SPLONG"],
-    clust_thresh = config["CLUSTTHRESH"],
+    clust_thresh = config["CLUSTTHRESHFULL"],
     batch_out = expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
     pca_out = config["PCACLUSTOUT"]
   output:
     batch_out = expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
-    clust_pc_out = expand("{folder}pcs_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESH"]),
-    clust_var_out = expand("{folder}var_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESH"])
+    clust_pc_out = expand("{folder}pcs_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESHFULL"]),
+    clust_var_out = expand("{folder}var_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESHFULL"])
   script: "scripts/run_ipyrad_pca.py"
 
+# generate quarto report for assembly qc
+#rule run_assembly_qc_report:
+#  input:
+#    clust_thresh = config["CLUSTTHRESH"]
+#
 
 

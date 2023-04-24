@@ -14,18 +14,16 @@ plot_pca <- function(pca_obj,
                      species_name,
                      color_var) {
 
-  pc_df <- suppressMessages(bind_cols(pca_obj$pcaxes[["0"]][,1:4],
-                                      pca_obj$names))
 
-  colnames(pc_df) <- c(paste0("PC_", 1:4), "id_code")
+  # create a dataframe for plotting
+  pc_df <- pca_obj %>%
+    # filter for the desired species
+    filter(name == species_name) %>%
+    bind_cols(locs_df %>% filter(species == species_name))
 
-  pc_df_cat <- left_join(
-    pc_df,
-    locs_df,
-    by = "id_code"
-  )
 
-  ggplot(pc_df_cat, aes(x = .data[[x]], y = .data[[y]], fill = .data[[color_var]])) +
+
+  ggplot(pc_df, aes(x = .data[[x]], y = .data[[y]], fill = .data[[color_var]])) +
     geom_point(alpha = 0.9, size = 3, shape = 21) +
     scale_fill_viridis_d() +
     labs(title = paste0("E. ", species_name)) +
@@ -34,20 +32,19 @@ plot_pca <- function(pca_obj,
 
 
 # function to plot the cumulative variances of the first 8 PCs for each clustering threshold
-# pca_obj_list should be a named list of outputs from ipyrad's pca function, where the names are the cluster thresholds
-plot_cumvar <- function(pca_obj_list) {
+# var_obj should be a data frame with a name column and var column
+# species_name needs to be the species name
+# clust_thresh needs to be a vector of cluster thresholds
 
-  # get the
-  variances <- vector(mode = "numeric", length = length(pca_obj_list))
-  for (i in 1:length(pca_obj_list)){
-    variances[[i]] <- sum(pca_obj_list[[i]]$variances[[1]][1:8])
-  }
+plot_cumvar <- function(var_obj, species_name, clust_thresh) {
 
-  # tibble of variances for plotting
-  vardf <- tibble(
-    clust_thresh = names(pca_obj_list),
-    cumvar = variances
-  )
+  vardf <- var_obj %>%
+    filter(str_detect(name, species_name)) %>%
+    mutate(clust_thresh = str_split_fixed(name, "_", n = 2)[,2]) %>%
+    group_by(name, clust_thresh) %>%
+    slice(1:8) %>%
+    summarize(cumvar = sum(var)) %>%
+    ungroup()
 
   p <- ggplot(vardf, aes(x = clust_thresh, y = cumvar)) +
     geom_point(size = 3) +

@@ -23,7 +23,8 @@ def run_pca(species, sp_map, snps_path="", axes_out="", var_out="", is_clust = F
   col_names = []
   ncols = pca_sp.pcaxes[0].shape[0]
   for i in range(ncols):
-    n = "PC_{0}".format(i)
+    axnum = i + 1
+    n = "PC_{0}".format(axnum)
     col_names.append(n)
   
   # convert pc axes array to a pandas dataframe and write out
