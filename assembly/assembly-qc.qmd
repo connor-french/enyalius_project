@@ -3,11 +3,22 @@ title: "Assembly QC"
 format: 
   html:
     code-fold: true
+params:
+  locs: ""
+  ip_stats_94: ""
+  share_paths: ""
+  pca_batch_paths: ""
+  clust_var_paths: ""
+  clust_pc_paths: ""
+  thresh: ""
+  ipstats: ""
+  outshort: ""
+  inlong: ""
 editor: visual
 bibliography: references.bib
 ---
 
-This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on assessing the presence of batch effects and determining the appropriate clustering threshold. 
+This report outlines quality control (QC) assessments performed on *Enyalius* `ipyrad` assemblies, with a focus on assessing the presence of batch effects and determining the appropriate clustering threshold.
 
 For the batch effect analysis, I'm arbitrarily using the cluster threshold of 0.94. These values may vary a little bit from the optimal clustering threshold to be determined, but shouldn't impact any conclusions. I am considering clustering thresholds of 0.90, 0.92, 0.94, 0.96, and 0.98.
 
@@ -27,10 +38,17 @@ source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
 source(here("assembly", "scripts", "share_to_vec.R"))
 source(here("assembly", "scripts", "calc_gendist.R"))
 
-locs <- snakemake@input[["locs"]]
+# shorthand for parsing list param inputs, where x is the param call, e.g. x = params$thresh
+# only necessary for params with multiple inputs
+parse_params <- function(x) {
+  x <- str_split_1(x, " ")
+  return(x)
+  }
+
+locs <- read_csv(params$locs)
 
 # cluster thresholds 
-clust_thresh <- paste0("clust", snakemake@config[["CLUSTTHRESHFULL"]])
+clust_thresh <- paste0("clust", parse_params(params$thresh))
 
 ```
 
@@ -52,7 +70,7 @@ To determine the impact of batch effects, I am:
 #| message: false
 #| warning: false
 
-ip_stats_94 <- read_ipyrad_stats(snakemake@input[["ip_stats_94"]])
+ip_stats_94 <- read_ipyrad_stats(params$ip_stats_94)
 
 locs_stats_94 <- left_join(
   ip_stats_94, 
@@ -138,7 +156,7 @@ In the first iteration, there are a couple outlier individuals (*per_bana_CTMZ03
 #| message: false
 #| warning: false
 
-share_paths <- snakemake@input[["share_paths"]]
+share_paths <- parse_params(params$share_paths)
 
 share_mats <- map(share_paths, read_csv) %>% 
   map(as.matrix)
@@ -149,7 +167,6 @@ for (i in 1:length(share_mats)) {
   class(share_mats[[i]]) <- "numeric"
 }
 ```
-
 
 ```{r}
 #| label: sharing-plot
@@ -243,8 +260,7 @@ Based on the first four PC axes, there is no bias in genetic diversity by plate 
 #| message: false
 #| warning: false
 
-## convert to snakemake
-pca_batch_paths <- snakemake@input[["pca_batch_paths"]]
+pca_batch_paths <- parse_params(params$pca_batch_paths)
 
 # read in the files. the first column is row numbers, which need to be removed
 pca_batch_list <- map(pca_batch_paths, \(x) read_csv(x) %>% select(-1))
@@ -255,7 +271,6 @@ names(pca_batch_list) <- map_chr(pca_batch_paths, \(x) basename(x) %>% str_remov
 # make a big dataframe for easy filtering
 pca_batch_df <- bind_rows(pca_batch_list, .id = "name")
 ```
-
 
 ::: panel-tabset
 ## E. catenatus
@@ -399,14 +414,14 @@ Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not perform
 #| message: false
 #| warning: false
 
-ip_stats_files <- snakemake@config[["IPSTATS"]]
+ip_stats_files <- parse_params(params$ipstats)
 
 names(ip_stats_files) <- clust_thresh
 
 ip_stats <- map_df(ip_stats_files, read_ipyrad_stats, .id = "clust_threshold")
 
 # specify outgroups for filtering
-outgroups <- snakemake@config[["OUTSHORT"]]
+outgroups <- parse_params(params$outshort)
 
 total_snps <- map_df(ip_stats_files, read_total_snps) %>% 
   pivot_longer(everything(), names_to = "clust_threshold", values_to = "total_snps")
@@ -470,10 +485,10 @@ I decided to use the first eight principal components due to likely strong popul
 
 # only want ingroup species.
 locs_ingroup <- locs %>% 
-         filter(species %in% snakemake@config[["INLONG"]])
+         filter(species %in% parse_params(params$inlong))
 
 # read in pc variances
-pca_var_paths <- snakemake@input[["clust_var_paths"]]
+pca_var_paths <- parse_params(params$clust_var_paths)
 
 # read in the files. the first column is row numbers, which need to be removed
 pca_var_list <- map(pca_var_paths, \(x) read_csv(x) %>% select(-1))
@@ -517,7 +532,6 @@ pca_cumvar_ihe
 
 ## E. perditus
 
-
 ```{r}
 #| label: plot-pc_cumvar-perditus
 pca_cumvar_per <-
@@ -543,7 +557,6 @@ pca_cumvar_pic
 ```
 
 ## All
-
 
 ```{r}
 #| label: plot-pc_cumvar-all
@@ -572,7 +585,7 @@ I'm estimating the pairwise genetic distance among individuals by calculating th
 #| message: false
 #| warning: false
 
-share_paths <- snakemake@input[["share_paths"]]
+share_paths <- parse_params(params$share_paths)
 
 share_list <- map(share_paths, read_csv)
 
@@ -587,7 +600,10 @@ share_vec_list <-
   )
 
 # genetic distance vectors
-pca_clust_paths <- snakemake@input[["clust_pc_paths"]]
+pca_clust_paths <- parse_params(params$clust_pc_paths)
+
+# only retain gen dist vecs for all species matrices
+pca_clust_paths <- pca_clust_paths[str_detect(pca_clust_paths, "all")]
 
 pca_clust_list <- map(pca_clust_paths, \(x) read_csv(x, show_col_types = FALSE))
   
@@ -621,7 +637,7 @@ IBD predicts that genetic distance should increase with geographic distance with
 
 I'm using the `sf::st_distance()` function to calculate great circle distances rather than Euclidean distances.
 
-> Results: Slope is steady until clust92, then sharply decreases. I'd say it's staying up until 0.92. 
+> Results: Slope is steady until clust92, then sharply decreases. I'd say it's staying up until 0.92.
 
 ```{r}
 #| label: calc-geo-dist

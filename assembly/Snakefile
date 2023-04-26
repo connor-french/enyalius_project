@@ -106,16 +106,31 @@ rule run_assembly_qc_report:
     locs = "processed_localities/locs_nobad.csv",
     # ipyrad stats from random cluster for batch effects pca
     ip_stats_94 = "full/clust94_outfiles/clust94_stats.txt",
-    share_paths = expand("{folder}clust{thresh}_share.csv", folder = config["SHAREOUT"], thresh = config["CLUSTTHRESH"]),
+    share_paths = expand("{folder}clust{thresh}_share.csv", folder = config["SHAREOUT"], thresh = config["CLUSTTHRESHFULL"]),
     pca_batch_paths = expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
     clust_var_paths = expand("{folder}var_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESHFULL"]),
     clust_pc_paths = expand("{folder}pcs_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESHFULL"])
+  params:
+    thresh = config["CLUSTTHRESHFULL"],
+    ipstats = config["IPSTATS"],
+    outshort = config["OUTSHORT"],
+    inlong = config["INLONG"]
   output:
     "assembly-qc.html"
   log:
     "logs/assembly-qc/assembly-qc.log"
-  script:
-    "assembly-qc.qmd"
+  shell:
+    "quarto render assembly-qc.qmd \
+    -P locs:{input.locs} \
+    -P ip_stats_94:{input.ip_stats_94} \
+    -P share_paths:'{input.share_paths}' \
+    -P pca_batch_paths:'{input.pca_batch_paths}' \
+    -P clust_var_paths:'{input.clust_var_paths}' \
+    -P clust_pc_paths:'{input.clust_pc_paths}' \
+    -P thresh:'{params.thresh}' \
+    -P ipstats:'{params.ipstats}' \
+    -P outshort:'{params.outshort}' \
+    -P inlong:'{params.inlong}'"
 
 
 
