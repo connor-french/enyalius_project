@@ -27,15 +27,11 @@ source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
 source(here("assembly", "scripts", "share_to_vec.R"))
 source(here("assembly", "scripts", "calc_gendist.R"))
 
-locs <- read_csv(here("assembly", "processed_localities", "locs.csv"))
+locs <- snakemake@input[["locs"]]
 
 # cluster thresholds 
-## update with snakemake input
-clust_thresh <- c("clust88", "clust90", "clust92", "clust94", "clust96", "clust98")
+clust_thresh <- paste0("clust", snakemake@config[["CLUSTTHRESHFULL"]])
 
-# snps filepath for missingness matrix
-## update with snakemake input
-snps_path_94 <- here("assembly", "full", "clust94_outfiles", "clust94.snps.hdf5")
 ```
 
 ::: panel-tabset
@@ -56,8 +52,7 @@ To determine the impact of batch effects, I am:
 #| message: false
 #| warning: false
 
-## update with snakemake input
-ip_stats_94 <- read_ipyrad_stats(here("assembly", "full", "clust94_outfiles", "clust94_stats.txt"))
+ip_stats_94 <- read_ipyrad_stats(snakemake@input[["ip_stats_94"]])
 
 locs_stats_94 <- left_join(
   ip_stats_94, 
@@ -143,8 +138,7 @@ In the first iteration, there are a couple outlier individuals (*per_bana_CTMZ03
 #| message: false
 #| warning: false
 
-
-share_paths <- list.files(here("assembly", "full", "sharing_matrices"), full.names = TRUE)
+share_paths <- snakemake@input[["share_paths"]]
 
 share_mats <- map(share_paths, read_csv) %>% 
   map(as.matrix)
@@ -250,7 +244,7 @@ Based on the first four PC axes, there is no bias in genetic diversity by plate 
 #| warning: false
 
 ## convert to snakemake
-pca_batch_paths <- list.files(here("assembly", "full", "pca_batch"), pattern = ".csv", full.names = TRUE)
+pca_batch_paths <- snakemake@input[["pca_batch_paths"]]
 
 # read in the files. the first column is row numbers, which need to be removed
 pca_batch_list <- map(pca_batch_paths, \(x) read_csv(x) %>% select(-1))
@@ -405,20 +399,14 @@ Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not perform
 #| message: false
 #| warning: false
 
-## update with snakemake input
-ip_stats_files <- c(
-  clust88 = here("assembly", "full", "clust88_outfiles", "clust88_stats.txt"),
-  clust90 = here("assembly", "full", "full_clust90_outfiles", "full_clust90_stats.txt"),
-  clust92 = here("assembly", "full", "clust92_outfiles", "clust92_stats.txt"),
-  clust94 = here("assembly", "full", "clust94_outfiles", "clust94_stats.txt"),
-  clust96 = here("assembly", "full", "clust96_outfiles", "clust96_stats.txt"),
-  clust98 = here("assembly", "full", "clust98_outfiles", "clust98_stats.txt")
-)
+ip_stats_files <- snakemake@config[["IPSTATS"]]
+
+names(ip_stats_files) <- clust_thresh
 
 ip_stats <- map_df(ip_stats_files, read_ipyrad_stats, .id = "clust_threshold")
 
 # specify outgroups for filtering
-outgroups <- c("agr", "alo", "uva")
+outgroups <- snakemake@config[["OUTSHORT"]]
 
 total_snps <- map_df(ip_stats_files, read_total_snps) %>% 
   pivot_longer(everything(), names_to = "clust_threshold", values_to = "total_snps")
@@ -481,13 +469,11 @@ I decided to use the first eight principal components due to likely strong popul
 #| warning: false
 
 # only want ingroup species.
-## convert to snakemake input
 locs_ingroup <- locs %>% 
-         filter(species %in% c("catenatus", "iheringii", "perditus", "pictus"))
+         filter(species %in% snakemake@config[["INLONG"]])
 
 # read in pc variances
-## convert to snakemake
-pca_var_paths <- list.files(here("assembly", "full", "pca_clust"), pattern = "var", full.names = TRUE)
+pca_var_paths <- snakemake@input[["clust_var_paths"]]
 
 # read in the files. the first column is row numbers, which need to be removed
 pca_var_list <- map(pca_var_paths, \(x) read_csv(x) %>% select(-1))
@@ -575,43 +561,39 @@ pca_cumvar_all
 
 Over-splitting homologous loci into multiple loci is most likely to occur in genetically divergent individuals, leading to an increase in missingness when the locus is improperly split. Therefore, I expect the correlation to increase between genetic diversity and missingness when loci are being over-split.
 
-I'm counting the number of shared loci between individual pairs using `Sharing` from the `ipyrad.analysis` module. So, this will result in the opposite relationship with genetic diversity, compared with missingness (negative rather than positive).
+I'm counting the number of shared loci between individual pairs using `Sharing` from the `ipyrad.analysis` module (performed in an earlier step of the Snakemake pipeline). So, this will result in the opposite relationship with genetic diversity, compared with missingness (negative rather than positive).
 
-I'm estimating the pairwise genetic distance among individuals by calculating the Euclidean distance of PC-space between individuals, *sensu* @shirk2017. I'm using the PCAs conducted in the previous section and selecting the first 20 PCs as the information contained drops considerably after this.
+I'm estimating the pairwise genetic distance among individuals by calculating the Euclidean distance of PC-space between individuals, *sensu* @shirk2017. I'm using the PCAs conducted in the previous section and selecting the first 20 PCs as the information contained drops considerably after this. Additionally, to simplify comparisons, I'm only considering the matrices that contain individuals from all ingroup species.
 
-> Results: The correlation between missingness and genetic distance varies, then sharply increases after a 0.94 clustering threshold. So, a threshold less than 0.96 should be okay according to this metric.
-
-```{python}
-#| label: calc-sharing-clusts
-#| cache: true
-#| output: false
-
-# this takes a while. I'd write it to file and read it in if you plan on running this multiple times
-
-share_list = []
-for i in r.snps_paths:
-  share_sp = run_sharing(i)
-  share_list.append(share_sp)
-  return share_list
-
-```
+> Results: The correlation between missingness and genetic distance varies, then sharply increases after a 0.92 clustering threshold. So, a threshold less than 0.94 should be okay according to this metric.
 
 ```{r}
 #| label: wrangle-vectors-clust
+#| message: false
+#| warning: false
+
+share_paths <- snakemake@input[["share_paths"]]
+
+share_list <- map(share_paths, read_csv)
 
 # allele sharing vectors
 share_vec_list <-
   map(
-    py$share_list,
+    share_list,
     \(x) share_to_vec(
       share_obj = x,
-      pca_names = py$pca_list_all$clust90$names
+      ingroup_names = locs_ingroup$id_code
     )
   )
 
 # genetic distance vectors
-pc_dist_list <- map(py$pca_list_all, calc_gendist)
+pca_clust_paths <- snakemake@input[["clust_pc_paths"]]
 
+pca_clust_list <- map(pca_clust_paths, \(x) read_csv(x, show_col_types = FALSE))
+  
+names(pca_clust_list) <- map_chr(pca_clust_paths, \(x) basename(x) %>% str_remove(".csv") %>% str_remove("pcs_"))
+
+pc_dist_list <- map(pca_clust_list, calc_gendist)
 ```
 
 ```{r}
@@ -639,7 +621,7 @@ IBD predicts that genetic distance should increase with geographic distance with
 
 I'm using the `sf::st_distance()` function to calculate great circle distances rather than Euclidean distances.
 
-> Results: Slope decreases slightly as clustering threshold increases to 0.92, then sharply decreases. I'd say it's staying up until 0.92. 
+> Results: Slope is steady until clust92, then sharply decreases. I'd say it's staying up until 0.92. 
 
 ```{r}
 #| label: calc-geo-dist

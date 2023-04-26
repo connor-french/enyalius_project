@@ -1,8 +1,8 @@
 # calculate genetic distance in PC-space
 calc_gendist <- function(pca_obj, num_pcs = 20) {
 
-  # get the pc axes
-  pcs <- pca_obj$pcaxes$`0`[,1:num_pcs]
+  # get the pc axes. The first column is row numbers
+  pcs <- pca_obj[,2:num_pcs + 1]
 
   # convert pc axes dataframe to a matrix
   pc_dist <- as.matrix(dist(pcs, method = "euclidean"))
