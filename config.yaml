@@ -1,0 +1,4 @@
+# threshold for coverage in data, where 70% = a 70% complete data matrix with 30% of individuals missing for a particular SNP
+MINSPCOV: [0.5, 0.6, 0.7, 0.8]
+
+INLONG: ["catenatus", "iheringii", "perditus", "pictus"]

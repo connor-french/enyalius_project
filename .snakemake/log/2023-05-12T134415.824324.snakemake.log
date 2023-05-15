@@ -1,0 +1,37 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 7
+Rules claiming more threads will be scaled down.
+Job stats:
+job               count    min threads    max threads
+--------------  -------  -------------  -------------
+all                   1              1              1
+move_ind_lists        1              1              1
+total                 2              1              1
+
+Select jobs to execute...
+
+[Fri May 12 13:44:16 2023]
+rule move_ind_lists:
+    input: assembly/catenatus_inds.txt, assembly/iheringii_inds.txt, assembly/perditus_inds.txt, assembly/pictus_inds.txt
+    output: analysis/data/catenatus_inds.txt, analysis/data/iheringii_inds.txt, analysis/data/perditus_inds.txt, analysis/data/pictus_inds.txt
+    jobid: 2
+    reason: Missing output files: analysis/data/catenatus_inds.txt, analysis/data/iheringii_inds.txt, analysis/data/pictus_inds.txt, analysis/data/perditus_inds.txt
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+[Fri May 12 13:44:16 2023]
+Finished job 2.
+1 of 2 steps (50%) done
+Select jobs to execute...
+
+[Fri May 12 13:44:16 2023]
+localrule all:
+    input: analysis/data/vcfs/clust92_catenatus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.8_nosingletons.vcf, analysis/data/enyalius_locs_genetics.csv, analysis/data/catenatus_inds.txt, analysis/data/iheringii_inds.txt, analysis/data/perditus_inds.txt, analysis/data/pictus_inds.txt
+    jobid: 0
+    reason: Input files updated by another job: analysis/data/catenatus_inds.txt, analysis/data/pictus_inds.txt, analysis/data/iheringii_inds.txt, analysis/data/perditus_inds.txt
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+[Fri May 12 13:44:16 2023]
+Finished job 0.
+2 of 2 steps (100%) done
+Complete log: .snakemake/log/2023-05-12T134415.824324.snakemake.log

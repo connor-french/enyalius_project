@@ -1,0 +1,33 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 7
+Rules claiming more threads will be scaled down.
+Job stats:
+job               count    min threads    max threads
+--------------  -------  -------------  -------------
+all                   1              1              1
+move_ind_lists        1              1              1
+total                 2              1              1
+
+Select jobs to execute...
+
+[Fri May 12 13:40:55 2023]
+rule move_ind_lists:
+    input: assembly/catenatus_inds.txt, assembly/iheringii_inds.txt, assembly/perditus_inds.txt, assembly/pictus_inds.txt
+    output: analysis/data/catenatus_inds.txt, analysis/data/iheringii_inds.txt, analysis/data/perditus_inds.txt, analysis/data/pictus_inds.txt
+    jobid: 2
+    reason: Missing output files: analysis/data/perditus_inds.txt, analysis/data/pictus_inds.txt, analysis/data/catenatus_inds.txt, analysis/data/iheringii_inds.txt
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+[Fri May 12 13:40:55 2023]
+Error in rule move_ind_lists:
+    jobid: 2
+    input: assembly/catenatus_inds.txt, assembly/iheringii_inds.txt, assembly/perditus_inds.txt, assembly/pictus_inds.txt
+    output: analysis/data/catenatus_inds.txt, analysis/data/iheringii_inds.txt, analysis/data/perditus_inds.txt, analysis/data/pictus_inds.txt
+    shell:
+        cp assembly/catenatus_inds.txt assembly/iheringii_inds.txt assembly/perditus_inds.txt assembly/pictus_inds.txt analysis/data/catenatus_inds.txt analysis/data/iheringii_inds.txt analysis/data/perditus_inds.txt analysis/data/pictus_inds.txt
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-05-12T134055.215594.snakemake.log

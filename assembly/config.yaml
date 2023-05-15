@@ -3,6 +3,9 @@ CLUSTBRANCHES: [88, 92, 94, 96, 98]
 
 CLUSTTHRESH: [88, 92, 94, 96, 98]
 
+# threshold for coverage in data, where 70% = a 70% complete data matrix with 30% of individuals missing for a particular SNP
+MINSPCOV: [0.5, 0.6, 0.7, 0.8]
+
 # param with 90 included
 CLUSTTHRESHFULL: [88, 90, 92, 94, 96, 98]
 
@@ -12,13 +15,21 @@ INLONG: ["catenatus", "iheringii", "perditus", "pictus"]
 
 OUTSHORT: ["agr", "alo", "uva"]
 
+BADINDS: ["per_bana_CTMZ03943", "cat_cam_PEU322", "pic_barr_MTR34443"]
+
 SNPPATHS: ["full/clust88_outfiles/clust88.snps.hdf5", "full/full_clust90_outfiles/full_clust90.snps.hdf5", "full/clust92_outfiles/clust92.snps.hdf5", "full/clust94_outfiles/clust94.snps.hdf5", "full/clust96_outfiles/clust96.snps.hdf5", "full/clust98_outfiles/clust98.snps.hdf5"]
+
+# so I don't have to index the chosen clustering threshold every time I want to access it
+SNPPATH92: ["full/clust92_outfiles/clust92.snps.hdf5"]
 
 SHAREOUT: ["full/sharing_matrices/"]
 
 PCABATCHOUT: ["full/pca_batch/"]
 
 PCACLUSTOUT: ["full/pca_clust/"]
+
+# output folder for per-species PCAs stratified by missingness thresholds
+PCAMISSOUT: ["full/pca_miss/"]
 
 # ipyrad stats paths fully specified because of lame full_clust90 path specification
 IPSTATS: ["full/clust88_outfiles/clust88_stats.txt", "full/full_clust90_outfiles/full_clust90_stats.txt", "full/clust92_outfiles/clust92_stats.txt", "full/clust94_outfiles/clust94_stats.txt", "full/clust96_outfiles/clust96_stats.txt", "full/clust98_outfiles/clust98_stats.txt"]

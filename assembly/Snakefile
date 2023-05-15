@@ -16,7 +16,13 @@ rule all:
     expand("{folder}pcs_{species}.csv", folder = config["PCABATCHOUT"], species = config["SPLONG"]),
     expand("{folder}pcs_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESHFULL"]),
     expand("{folder}var_{splong}_{thresh}.csv", folder = config["PCACLUSTOUT"], splong = config["SPLONG"], thresh = config["CLUSTTHRESHFULL"]),
-    "assembly-qc.html"
+    "assembly-qc.html",
+    "full/clust92_outfiles/clust92.imiss",
+    "full/clust92_outfiles/clust92_nobad.vcf",
+    expand("{species}_inds.txt", species = config["INLONG"]),
+    "processed_localities/locs_nobad_final.csv",
+    expand("full/clust92_outfiles/clust92_{species}_{minspcov}.recode.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    expand("full/clust92_outfiles/clust92_{species}_{minspcov}_nosingletons.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])
 
 rule run_fastqc:
   input:
@@ -131,6 +137,72 @@ rule run_assembly_qc_report:
     -P ipstats:'{params.ipstats}' \
     -P outshort:'{params.outshort}' \
     -P inlong:'{params.inlong}'"
+
+# get per-individual missingness for each species
+rule get_individual_missingness:
+  input:
+    "full/clust92_outfiles/clust92.vcf"
+  output:
+    "full/clust92_outfiles/clust92.imiss"
+  shell:
+    "vcftools --vcf {input} --missing-indv --stdout > {output}"
+
+# remove individuals with excessive per-individual missingness
+rule remove_bad_individuals:
+  input:
+    vcf = "full/clust92_outfiles/clust92.vcf"
+  params:
+    out_prefix = "full/clust92_outfiles/clust92_nobad"
+  output:
+    "full/clust92_outfiles/clust92_nobad.vcf"
+  shell:
+    "vcftools --vcf {input.vcf} --remove-indv per_bana_CTMZ03943 --remove-indv cat_cam_PEU322 --remove-indv pic_barr_MTR34443 --recode --recode-INFO-all --stdout > {output}"
+
+# generate lists of individuals per species to use for splitting the vcf into per-species VCFs
+rule list_ind_per_sp:
+  input:
+    csv = "processed_localities/locs_nobad.csv"
+  params:
+    bad_inds = config["BADINDS"]
+  output:
+    expand("{species}_inds.txt", species = config["INLONG"])
+  script:
+    "scripts/inds_per_species.R"
+
+# remove the additional "bad" individuals from the locs_nobad.csv file
+rule remove_bad_inds:
+  input:
+    csv = "processed_localities/locs_nobad.csv",
+  params:
+    bad_inds = config["BADINDS"]
+  output:
+    "processed_localities/locs_nobad_final.csv"
+  script:
+    "scripts/remove_bad_locs.R"
+
+
+# split vcf accross species and missingness values
+for sp in config["INLONG"]:
+  for m in config["MINSPCOV"]:
+    rule:
+      input:
+        vcf = "full/clust92_outfiles/clust92_nobad.vcf",
+        ind = f"{sp}_inds.txt"
+      params:
+        minspcov = m
+      output:
+        f"full/clust92_outfiles/clust92_{sp}_{m}.recode.vcf"
+      shell:
+        f"vcftools --vcf {{input.vcf}} --keep {{input.ind}} --max-missing {{params.minspcov}} --recode --recode-INFO-all --stdout > {{output}}"
+
+# remove singletons from vcfs
+rule remove_singletons:
+  input:
+    expand("full/clust92_outfiles/clust92_{species}_{minspcov}.recode.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])
+  output:
+    expand("full/clust92_outfiles/clust92_{species}_{minspcov}_nosingletons.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])
+  script:
+    "scripts/remove_singletons.py"
 
 
 

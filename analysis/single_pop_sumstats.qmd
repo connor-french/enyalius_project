@@ -1,0 +1,401 @@
+---
+title: "Single population summary statistics"
+format: 
+  html:
+    code-fold: true
+params:
+  site_pi: ""
+  ind_pi: ""
+  wat_theta: ""
+  taj_d: ""
+  inlong: ""
+  ind_lists: ""
+editor: visual
+---
+
+I'm creating per-species plots of the single population summary statistics calculated for four coverage thresholds: 0.5, 0.6, 0.7, and 0.8. I'm seeing if these differ across missingness thresholds for each species to see how missing data impact genetic diversity estimates. In addition, I can get a quick idea of genetic diversity variation across species.
+
+```{r}
+#| label: load-packages-read-data
+#| echo: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(here)
+
+# shorthand for parsing list param inputs, where x is the param call, e.g. x = params$thresh
+# only necessary for params with multiple inputs
+parse_params <- function(x) {
+  x <- str_split_1(x, " ")
+  return(x)
+  }
+
+# list of individuals for each species in the same order as the VCF
+ind_list_paths <- parse_params(params$ind_lists)
+ind_lists <- map(ind_list_paths, \(x) read_lines(x)) %>% 
+  set_names(nm = map_chr(ind_list_paths, \(x) basename(x) %>% str_remove(".txt")))
+
+# read in per-site pi and add names appropriately
+# results in data frames with columns: pi, dataset, species
+site_pi_paths <- parse_params(params$site_pi)
+site_pi <- map(site_pi_paths, \(x) read_table(x, col_names = "pi", na = "nan")) %>% 
+  set_names(nm = map_chr(site_pi_paths, \(x) basename(x) %>% str_remove(".txt"))) %>% 
+  bind_rows(.id = "dataset") %>% 
+  mutate(species = case_when(
+    str_detect(dataset, "catenatus") ~ "catenatus",
+    str_detect(dataset, "pictus") ~ "pictus",
+    str_detect(dataset, "perditus") ~ "perditus",
+    str_detect(dataset, "iheringii") ~ "iheringii"
+  )) 
+
+ind_pi_paths <- parse_params(params$ind_pi)
+ind_pi <- map(ind_pi_paths, \(x) read.table(x, header = FALSE) %>% as.matrix()) %>% 
+  set_names(nm = map_chr(ind_pi_paths, basename)) 
+
+# read in Watterson's theta 
+# results in data frames with columns: theta, dataset, species
+wat_theta_paths <- parse_params(params$wat_theta)
+wat_theta <- map(wat_theta_paths, \(x) read_table(x, col_names = "theta", na = "nan")) %>% 
+  set_names(nm = map_chr(wat_theta_paths, \(x) basename(x) %>% str_remove(".txt"))) %>% 
+  bind_rows(.id = "dataset") %>% 
+  mutate(species = case_when(
+    str_detect(dataset, "catenatus") ~ "catenatus",
+    str_detect(dataset, "pictus") ~ "pictus",
+    str_detect(dataset, "perditus") ~ "perditus",
+    str_detect(dataset, "iheringii") ~ "iheringii"
+  )) 
+
+# read in Tajima's D
+# results in data frames with columns: d, dataset, species
+taj_d_paths <- parse_params(params$taj_d)
+taj_d <- map(taj_d_paths, \(x) read_table(x, col_names = "d", na = "nan")) %>% 
+  set_names(nm = map_chr(taj_d_paths, \(x) basename(x) %>% str_remove(".txt"))) %>% 
+  bind_rows(.id = "dataset") %>% 
+  mutate(species = case_when(
+    str_detect(dataset, "catenatus") ~ "catenatus",
+    str_detect(dataset, "pictus") ~ "pictus",
+    str_detect(dataset, "perditus") ~ "perditus",
+    str_detect(dataset, "iheringii") ~ "iheringii"
+  )) 
+
+```
+
+::: panel-tabset
+## E. catenatus
+
+### per-site pi
+
+```{r}
+#| label: cat-site-pi
+#| layout-ncol: 1
+
+cat_site_pi <- site_pi %>% 
+  filter(species == "catenatus")
+
+ggplot(cat_site_pi, aes(x = pi, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+```
+
+### per-ind pi
+
+```{r}
+#| label: cat-ind-pi
+#| layout-ncol: 2
+
+cat_ind_names <- names(ind_lists) %>% 
+  str_detect("catenatus") %>% 
+  keep(ind_lists, .) %>% 
+  pluck(1)
+
+
+cat_ind_pi <- names(ind_pi) %>% 
+  str_detect("catenatus") %>% 
+  keep(ind_pi, .)
+
+for (i in 1:length(cat_ind_pi)){
+  rownames(cat_ind_pi[[i]]) <- cat_ind_names
+  colnames(cat_ind_pi[[i]]) <- cat_ind_names
+  heatmap(cat_ind_pi[[i]], main = names(cat_ind_pi)[i])
+}
+
+```
+
+### Watterson's theta
+
+```{r}
+#| label: cat-wat-theta
+#| layout-ncol: 1
+
+cat_wat_theta <- wat_theta %>% 
+  filter(species == "catenatus")
+
+ggplot(cat_wat_theta, aes(x = theta, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(cat_wat_theta, aes(x = theta, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+### Tajima's D
+```{r}
+#| label: cat-taj-d
+#| layout-ncol: 1
+#| warning: false
+#| message: false
+
+cat_taj_d <- taj_d %>% 
+  filter(species == "catenatus")
+
+ggplot(cat_taj_d, aes(x = d, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(cat_taj_d, aes(x = d, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+
+## E. pictus
+### per-site pi
+
+```{r}
+#| label: pic-site-pi
+#| layout-ncol: 1
+
+pic_site_pi <- site_pi %>% 
+  filter(species == "pictus")
+
+ggplot(pic_site_pi, aes(x = pi, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+```
+
+### per-ind pi
+
+```{r}
+#| label: pic-ind-pi
+#| layout-ncol: 2
+
+pic_ind_names <- names(ind_lists) %>% 
+  str_detect("pictus") %>% 
+  keep(ind_lists, .) %>% 
+  pluck(1)
+
+
+pic_ind_pi <- names(ind_pi) %>% 
+  str_detect("pictus") %>% 
+  keep(ind_pi, .)
+
+for (i in 1:length(pic_ind_pi)){
+  rownames(pic_ind_pi[[i]]) <- pic_ind_names
+  colnames(pic_ind_pi[[i]]) <- pic_ind_names
+  heatmap(pic_ind_pi[[i]], main = names(pic_ind_pi)[i])
+}
+
+```
+
+### Watterson's theta
+
+```{r}
+#| label: pic-wat-theta
+#| layout-ncol: 1
+
+pic_wat_theta <- wat_theta %>% 
+  filter(species == "pictus")
+
+ggplot(pic_wat_theta, aes(x = theta, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(pic_wat_theta, aes(x = theta, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+### Tajima's D
+```{r}
+#| label: pic-taj-d
+#| layout-ncol: 1
+#| warning: false
+#| message: false
+
+pic_taj_d <- taj_d %>% 
+  filter(species == "pictus")
+
+ggplot(pic_taj_d, aes(x = d, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(pic_taj_d, aes(x = d, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+## E. perditus
+### per-site pi
+
+```{r}
+#| label: per-site-pi
+#| layout-ncol: 1
+
+per_site_pi <- site_pi %>% 
+  filter(species == "perditus")
+
+ggplot(per_site_pi, aes(x = pi, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+```
+
+### per-ind pi
+
+```{r}
+#| label: per-ind-pi
+#| layout-ncol: 2
+
+per_ind_names <- names(ind_lists) %>% 
+  str_detect("perditus") %>% 
+  keep(ind_lists, .) %>% 
+  pluck(1)
+
+
+per_ind_pi <- names(ind_pi) %>% 
+  str_detect("perditus") %>% 
+  keep(ind_pi, .)
+
+for (i in 1:length(per_ind_pi)){
+  rownames(per_ind_pi[[i]]) <- per_ind_names
+  colnames(per_ind_pi[[i]]) <- per_ind_names
+  heatmap(per_ind_pi[[i]], main = names(per_ind_pi)[i])
+}
+
+```
+
+### Watterson's theta
+
+```{r}
+#| label: per-wat-theta
+#| layout-ncol: 1
+
+per_wat_theta <- wat_theta %>% 
+  filter(species == "perditus")
+
+ggplot(per_wat_theta, aes(x = theta, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(per_wat_theta, aes(x = theta, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+### Tajima's D
+```{r}
+#| label: per-taj-d
+#| layout-ncol: 1
+#| warning: false
+#| message: false
+
+per_taj_d <- taj_d %>% 
+  filter(species == "perditus")
+
+ggplot(per_taj_d, aes(x = d, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(per_taj_d, aes(x = d, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+## E. iheringii
+### per-site pi
+
+```{r}
+#| label: ihe-site-pi
+#| layout-ncol: 1
+
+ihe_site_pi <- site_pi %>% 
+  filter(species == "iheringii")
+
+ggplot(ihe_site_pi, aes(x = pi, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+```
+
+### per-ind pi
+
+```{r}
+#| label: ihe-ind-pi
+#| layout-ncol: 2
+
+ihe_ind_names <- names(ind_lists) %>% 
+  str_detect("iheringii") %>% 
+  keep(ind_lists, .) %>% 
+  pluck(1)
+
+
+ihe_ind_pi <- names(ind_pi) %>% 
+  str_detect("iheringii") %>% 
+  keep(ind_pi, .)
+
+for (i in 1:length(ihe_ind_pi)){
+  rownames(ihe_ind_pi[[i]]) <- ihe_ind_names
+  colnames(ihe_ind_pi[[i]]) <- ihe_ind_names
+  heatmap(ihe_ind_pi[[i]], main = names(ihe_ind_pi)[i])
+}
+
+```
+
+### Watterson's theta
+
+```{r}
+#| label: ihe-wat-theta
+#| layout-ncol: 1
+
+ihe_wat_theta <- wat_theta %>% 
+  filter(species == "iheringii")
+
+ggplot(ihe_wat_theta, aes(x = theta, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(ihe_wat_theta, aes(x = theta, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+### Tajima's D
+```{r}
+#| label: ihe-taj-d
+#| layout-ncol: 1
+#| warning: false
+#| message: false
+
+ihe_taj_d <- taj_d %>% 
+  filter(species == "iheringii")
+
+ggplot(ihe_taj_d, aes(x = d, color = dataset)) + 
+  geom_density() +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+ggplot(ihe_taj_d, aes(x = d, y = dataset)) +
+  geom_boxplot() +
+  theme_bw()
+```
+:::

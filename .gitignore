@@ -99,3 +99,12 @@ assembly/.DS_Store
 
 # images for lab notebook
 images/
+
+# vcfs for analysis
+analysis/data/vcfs/*
+
+# analysis sumstats output
+analysis/ouptut/single_pop_sumstats/*
+
+# sandbox for exploring Enyalius data
+enyalius-sandbox.ipynb

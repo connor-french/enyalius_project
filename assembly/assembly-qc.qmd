@@ -24,6 +24,10 @@ For the batch effect analysis, I'm arbitrarily using the cluster threshold of 0.
 
 Also, as a sanity check, the error rate should be on the order of 0.001 and heterozygosity should be on the order of 0.01.
 
+## Decision
+
+Based on all quality control assessments, I've determined that batch effects are not significant, although there is some variation in heterozygosity across sequencing plates, and a cluster threshold of 0.92 is the most appropriate across species. See below for more specific interpretations of the results.
+
 ```{r}
 #| label: r-setup
 #| warning: false
@@ -92,7 +96,7 @@ locs_stats_94 <- left_join(
 
 Heterozygosity varies across plates, but species mostly correspond with a single plate. For species sequenced across multiple plates, there doesn't appear to be plate effects.
 
-Error varies across plates in general and within species. I'll need to consider this for future analyses and may be able to account for it bioinformatically
+Error varies across plates in general and within species. I'll need to consider this for future analyses and may be able to account for it bioinformatically.
 
 ```{r}
 #| label: heterozygosity-plots
@@ -476,7 +480,7 @@ When true orthologues are oversplit, there should be a reduction in the divergen
 
 I decided to use the first eight principal components due to likely strong population structure within species and find that, in general, variance explained decreases with clustering threshold. There is no increase prior to the decrease, also indicating that I'm exploring cluster thresholds that are too high. Performing single-species assemblies could also solve this, but I want comparable diversity values across species and conducting different assemblies for each species may introduce non-biological biases in diversity metrics across species that I don't want.
 
-> Results: Across species and as a whole, the cumulative variance explained is steady up until a 0.92 clustering threshold, where it sharply decreasing afterwards, indicating a clustering threshold of 0.92 or lower is preferable according to this metric.
+> Results: Although there is some variation among species, as a whole the cumulative variance explained is steady up until a 0.92 clustering threshold, where it sharply decreasing afterwards, indicating a clustering threshold of 0.92 or lower is preferable according to this metric.
 
 ```{r}
 #| label: read-locs-snps-clust

@@ -1,0 +1,50 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 7
+Rules claiming more threads will be scaled down.
+Job stats:
+job                count    min threads    max threads
+---------------  -------  -------------  -------------
+all                    1              1              1
+move_localities        1              1              1
+move_singletons        1              1              1
+total                  3              1              1
+
+Select jobs to execute...
+
+[Thu May 11 14:35:11 2023]
+rule move_singletons:
+    input: assembly/full/clust92_outfiles/clust92_catenatus_0.5_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_catenatus_0.6_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_catenatus_0.7_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_catenatus_0.8_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_iheringii_0.5_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_iheringii_0.6_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_iheringii_0.7_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_iheringii_0.8_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_perditus_0.5_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_perditus_0.6_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_perditus_0.7_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_perditus_0.8_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_pictus_0.5_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_pictus_0.6_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_pictus_0.7_nosingletons.vcf, assembly/full/clust92_outfiles/clust92_pictus_0.8_nosingletons.vcf
+    output: analysis/data/vcfs/clust92_catenatus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.8_nosingletons.vcf
+    jobid: 1
+    reason: Missing output files: analysis/data/vcfs/clust92_perditus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.5_nosingletons.vcf
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+
+[Thu May 11 14:35:11 2023]
+rule move_localities:
+    input: assembly/processed_localities/locs_nobad_final.csv
+    output: analysis/enyalius_locs_genetics.csv
+    jobid: 2
+    reason: Missing output files: analysis/enyalius_locs_genetics.csv
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+[Thu May 11 14:35:11 2023]
+Finished job 1.
+1 of 3 steps (33%) done
+[Thu May 11 14:35:11 2023]
+Finished job 2.
+2 of 3 steps (67%) done
+Select jobs to execute...
+
+[Thu May 11 14:35:11 2023]
+localrule all:
+    input: analysis/data/vcfs/clust92_catenatus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.8_nosingletons.vcf, analysis/enyalius_locs_genetics.csv
+    jobid: 0
+    reason: Input files updated by another job: analysis/data/vcfs/clust92_catenatus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.8_nosingletons.vcf, analysis/enyalius_locs_genetics.csv, analysis/data/vcfs/clust92_catenatus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_catenatus_0.7_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_iheringii_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.8_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.5_nosingletons.vcf, analysis/data/vcfs/clust92_perditus_0.6_nosingletons.vcf, analysis/data/vcfs/clust92_pictus_0.7_nosingletons.vcf
+    resources: tmpdir=/var/folders/vf/3z__6c_11bb7b95dtcms1m0c0000gp/T
+
+[Thu May 11 14:35:11 2023]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: .snakemake/log/2023-05-11T143510.918267.snakemake.log

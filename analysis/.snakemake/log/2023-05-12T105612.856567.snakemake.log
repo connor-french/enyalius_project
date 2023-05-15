@@ -1,0 +1,5 @@
+Building DAG of jobs...
+MissingInputException in rule all in file /Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/Snakefile, line 4:
+Missing input files for rule all:
+    affected files:
+        reports/single_pop_sumstats.html
