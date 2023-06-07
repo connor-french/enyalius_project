@@ -7,7 +7,10 @@ rule all:
     ind_pi = expand("output/single_pop_sumstats/ind_pi_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     wat_theta = expand("output/single_pop_sumstats/wat_theta_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     taj_d = expand("output/single_pop_sumstats/taj_d_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
-    s_pop_sumstats = "single_pop_sumstats.html"
+    sfs = expand("output/single_pop_sumstats/sfs_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    num_sites = expand("output/single_pop_sumstats/num_sites_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    s_pop_sumstats = "single_pop_sumstats.html",
+    construct_matrices = expand("output/construct_matrices/construct_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
 
 # calculate single population summary statistics
 ## pi (per-site and per-individual), watterson's theta, tajima's d
@@ -18,7 +21,9 @@ rule calc_single_pop_sumstats:
     site_pi = expand("output/single_pop_sumstats/site_pi_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     ind_pi = expand("output/single_pop_sumstats/ind_pi_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     wat_theta = expand("output/single_pop_sumstats/wat_theta_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
-    taj_d = expand("output/single_pop_sumstats/taj_d_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
+    taj_d = expand("output/single_pop_sumstats/taj_d_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    sfs = expand("output/single_pop_sumstats/sfs_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    num_sites = expand("output/single_pop_sumstats/num_sites_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
   script:
     "scripts/calc_single_pop_sumstats.py"
 
@@ -29,6 +34,8 @@ rule plot_single_pop_sumstats:
     ind_pi = expand("output/single_pop_sumstats/ind_pi_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     wat_theta = expand("output/single_pop_sumstats/wat_theta_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     taj_d = expand("output/single_pop_sumstats/taj_d_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    sfs = expand("output/single_pop_sumstats/sfs_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
+    num_sites = expand("output/single_pop_sumstats/num_sites_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     ind_lists = expand("data/{species}_inds.txt", species = config["INLONG"])
   params:
     inlong = config["INLONG"]
@@ -40,6 +47,16 @@ rule plot_single_pop_sumstats:
     -P ind_pi:'{input.ind_pi}' \
     -P wat_theta:'{input.wat_theta}' \
     -P taj_d:'{input.taj_d}' \
+    -P sfs:'{input.sfs}' \
+    -P num_sites:'{input.num_sites}' \
     -P inlong:'{params.inlong}' \
     -P ind_lists:'{input.ind_lists}'"
 
+# create allele frequency matrices for conStruct analysis
+rule vcf_to_construct:
+  input:
+    expand("data/vcfs/clust92_{species}_{minspcov}_nosingletons.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])
+  output:
+    expand("output/construct_matrices/construct_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
+  script:
+    "scripts/vcf_to_construct.py"

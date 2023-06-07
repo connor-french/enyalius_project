@@ -182,6 +182,7 @@ rule remove_bad_inds:
 
 
 # split vcf accross species and missingness values
+# I'm also removing multiallelic sites from the vcfs. For whatever reason, ipyrad didn't remove all of them. The PCAs and analyses I performed earlier automatically remove them, so I don't need to perform the filtering earlier
 for sp in config["INLONG"]:
   for m in config["MINSPCOV"]:
     rule:
@@ -193,9 +194,10 @@ for sp in config["INLONG"]:
       output:
         f"full/clust92_outfiles/clust92_{sp}_{m}.recode.vcf"
       shell:
-        f"vcftools --vcf {{input.vcf}} --keep {{input.ind}} --max-missing {{params.minspcov}} --recode --recode-INFO-all --stdout > {{output}}"
+        f"vcftools --vcf {{input.vcf}} --keep {{input.ind}} --max-missing {{params.minspcov}} --max-alleles 2 --recode --recode-INFO-all --stdout > {{output}}"
 
 # remove singletons from vcfs
+
 rule remove_singletons:
   input:
     expand("full/clust92_outfiles/clust92_{species}_{minspcov}.recode.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])

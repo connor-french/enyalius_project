@@ -81,6 +81,8 @@ assembly/fastq/*
 
 # snakemake outputs
 assembly/.snakemake/*
+analysis/.snakemake/*
+.snakemake/*
 
 # assembly output
 assembly/full/*
@@ -104,7 +106,10 @@ images/
 analysis/data/vcfs/*
 
 # analysis sumstats output
-analysis/ouptut/single_pop_sumstats/*
+analysis/output/single_pop_sumstats/*
+
+# analysis conStruct matrices
+analysis/output/construct_matrices/*
 
 # sandbox for exploring Enyalius data
 enyalius-sandbox.ipynb
