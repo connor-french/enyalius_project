@@ -1,0 +1,167 @@
+---
+title: "ABC Analysis"
+format: html
+editor: visual
+---
+
+# Approximate Bayesian Computation Analysis
+
+## Setup
+
+```{r}
+#| label: load-packages
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(abc)
+library(here)
+
+```
+
+```{r}
+#| label: read-data
+#| warning: false
+#| message: false
+
+# read in sumstats
+## iheringii
+### Simulations
+lin_ihe_paths <- list.files(here("analysis", "output", "simulations"), pattern = "linear", full.names = TRUE)
+lin_ihe <- map_df(lin_ihe_paths, read_csv) %>% 
+  mutate(transformation = "linear")
+
+hinge_ihe <- read_csv(here("analysis", "output", "simulations", "sims_2023-11-20_hinge.csv")) %>% 
+  mutate(transformation = "hinge")
+
+sims_ihe <- bind_rows(lin_ihe, hinge_ihe) %>% 
+  # fill in the missing param values
+  group_by(param_id) %>% 
+  fill(ancestral_n, total_inds_curr) %>% 
+  fill(ancestral_n, total_inds_curr, .direction = "up") %>% 
+  ungroup()
+  
+
+### Empirical
+empirical_ihe <- read_csv(here("analysis", "output", "empirical_sumstats", "iheringii_sumstats.csv")) %>% 
+  dplyr::select(-num_var)
+
+## catenatus
+
+```
+
+## Exploration
+
+### PCA
+
+#### *E. iheringii*
+
+```{r}
+#| label: pca-ihe
+
+pca_df_ihe <- sims_ihe %>% 
+  dplyr::select(
+    starts_with("sfs"),
+    "taj_d",
+    starts_with("pi"),
+    starts_with("ibd"),
+    "morans_i"
+  )
+
+pca_ihe <- prcomp(pca_df_ihe, center=TRUE, scale. = FALSE)
+
+pca_df_ihe <- bind_cols(pca_ihe$x, sims_ihe)
+
+ggplot(pca_df_ihe, aes(x = PC1, y = PC2, color = transformation)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  theme_bw()
+```
+
+## ABC
+
+### Model Selection
+
+#### *E. iheringii*
+
+Model selection to assess discriminatory ability among simulations.
+
+```{r}
+#| label: model-selection-ihe
+#| cache: true
+
+sumstats_ihe <- sims_ihe %>% 
+  dplyr::select(
+    starts_with("sfs"),
+    "taj_d",
+    starts_with("pi"),
+    starts_with("ibd"),
+    "morans_i"
+  )
+
+cv_modsel_ihe <- cv4postpr(sims_ihe$transformation, sumstats_ihe, nval = 500, tol = 0.05, method="mnlogistic")
+
+summary(cv_modsel_ihe)
+```
+
+Model selection using the empirical data and a rejection algorithm.
+
+```{r}
+#| label: model-selection-rejection-ihe
+
+modsel_emp_ihe <- postpr(empirical_ihe, sims_ihe$transformation, sumstats_ihe, tol=.05, method="mnlogistic")
+
+summary(modsel_emp_ihe)
+
+```
+
+### Goodness-of-fit
+
+#### *E. iheringii*
+
+PCA
+
+```{r}
+#| label: gof-pca-ihe
+
+gfitpca(empirical_ihe, sumstat=sumstats_ihe, index=sims_ihe$transformation, cprob=.1)
+
+```
+
+Goodness-of-fit test linear.
+
+```{r}
+#| label: gof-test-lin-ihe
+#| cache: true
+
+ss_lin_ihe <- bind_cols(sumstats_ihe, transformation = sims_ihe$transformation) %>% 
+  filter(transformation == "linear") %>% 
+  dplyr::select(-transformation)
+
+gof_linear <- gfit(target=empirical_ihe, sumstat=ss_lin_ihe, statistic=mean, tol = 0.05, nb.replicate=100)
+
+plot(gof_linear, main="Histogram under linear model")
+
+```
+
+Goodness-of-fit test hinge.
+
+```{r}
+#| label: gof-test-hinge-ihe
+#| cache: true
+
+ss_hinge_ihe <- bind_cols(sumstats_ihe, transformation = sims_ihe$transformation) %>% 
+  filter(transformation == "hinge") %>% 
+  dplyr::select(-transformation)
+
+gof_hinge <- gfit(target=empirical_ihe, sumstat=ss_hinge_ihe, statistic=mean, tol = 0.05, nb.replicate=100)
+
+plot(gof_hinge, main="Histogram under threshold model")
+
+```
+
+Empirical summary statistics
+
+```{r}
+empirical_ihe %>% knitr::kable(digits = 3)
+```

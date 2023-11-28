@@ -51,24 +51,14 @@ rsconnect/
 # DS Store
 .DS_Store
 
-# full original environmental data sets
-analysis/data/brazil_clim/*
-analysis/data/forest_cover/*
-
-# full original genetic data sets
-analysis/data/Laura_ALL_ms_FINAL_80complete.snps.phy
-
-# large predictor files
-analysis/output/cropped_predictors/*
+# data. I'm going to upload data to a server later
+analysis/data/*
 
 # old scripts that I don't want to throw away but aren't necessary
 archive/*
 
 # slim files. I can track these later
 analysis/slim/*
-
-# sdm models. They're large and need to be stored elsewhere
-analysis/output/sdm_models/*
 
 # adhoc R scripts used for things like conference presentations or lab meetings
 R/adhoc/*
@@ -97,7 +87,10 @@ assembly/multiqc*
 assembly/logs/*
 
 # DS store
+.DS_Store
 assembly/.DS_Store
+analysis/.DS_Store
+
 
 # images for lab notebook
 images/
@@ -105,11 +98,9 @@ images/
 # vcfs for analysis
 analysis/data/vcfs/*
 
-# analysis sumstats output
-analysis/output/single_pop_sumstats/*
-
-# analysis conStruct matrices
-analysis/output/construct_matrices/*
+# analysis output
+analysis/output/*
+analysis/output2/*
 
 # sandbox for exploring Enyalius data
 enyalius-sandbox.ipynb

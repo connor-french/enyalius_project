@@ -1,5 +1,5 @@
 plate,barcode,sample_id,genus,species,locality,state,municipality,latitude,longitude,source_latlong,loc_code,id_code,reads,obs
-plate0,AAGACCAATCTGCAGG,MTR33144,Enyalius,catenatus,Betania; Santa Luzia,BA,NA,-15.4757,-39.22162,GPS exact latlong,bet,cat_bet_MTR33144,2197038,NA
+plate0,AAGACCAATCTGCAGG,MTR33144,Enyalius,catenatus,Betania; Santa Luzia,BA,NA,-15.4757,-39.22162,GPS exact latlong,bet,cat_bet_MTR33144,2197038,"NOTE: These localities were filtered during the assembly step (the output file ""locs_nobad_final.csv"") and hand modified to adjust a few coastal localities that no longer overlap with a raster grid cell after aggregation."
 plate0,AGCTGATACATGCAGG,MTR33202,Enyalius,catenatus,Betania; Santa Luzia,BA,NA,-15.4757,-39.22162,GPS exact latlong,bet,cat_bet_MTR33202,2605595,NA
 plate0,AGGAACCTCGTGCAGG,MTR16122,Enyalius,catenatus,Serra Bonita,BA,NA,-15.4199,-39.5436,GPS exact latlong,bon,cat_bon_MTR16122,2385449,NA
 plate0,TTATCCGTAGTGCAGG,MTR16123,Enyalius,catenatus,Serra Bonita,BA,NA,-15.3836,-39.5728,GPS exact latlong,bon,cat_bon_MTR16123,2320626,NA
@@ -10,7 +10,7 @@ plate0,CAAGCCGGTTTGCAGG,FRAG15P94,Enyalius,catenatus,Catu,BA,NA,-12.37833,-38.37
 plate0,TAGTGCGGTCTGCAGG,MTR35005,Enyalius,catenatus,PE Serra do Conduru,BA,NA,-14.48504,-39.13087,GPS exact latlong,cond,cat_cond_MTR35005,2847767,NA
 plate0,GGCCGGTAACTGCAGG,MTR35190,Enyalius,catenatus,PE Serra do Conduru,BA,NA,-14.48504,-39.13087,GPS exact latlong,cond,cat_cond_MTR35190,2635164,NA
 plate0,TTGCGCAAGCTGCAGG,RPD015,Enyalius,catenatus,Fazenda Paris; Camaca,BA,NA,-15.42031,-39.55094,GPS exact latlong,fazpar,cat_fazpar_RPD015,2328126,NA
-plate0,TACGATGGAGTGCAGG,ABA45,Enyalius,catenatus,CE Almada; Ilheus,BA,NA,-14.7833,-39.06,GPS of the reserve,ilh,cat_ilh_ABA45,2672801,NA
+plate0,TACGATGGAGTGCAGG,ABA45,Enyalius,catenatus,CE Almada; Ilheus,BA,NA,-14.7833,-39.11,GPS of the reserve,ilh,cat_ilh_ABA45,2672801,nudged west by 0.05 degrees to overlap closest raster cell
 plate0,TCGGCAGTCGTGCAGG,MTR33052,Enyalius,catenatus,Itapebi,BA,NA,-15.89333,-39.53093,GPS exact latlong,itp,cat_itp_MTR33052,1797799,NA
 plate0,CTTATTCTACTGCAGG,MTR33053,Enyalius,catenatus,Itapebi,BA,NA,-15.89333,-39.53093,GPS exact latlong,itp,cat_itp_MTR33053,1520555,NA
 plate0,AGTTCCATTGTGCAGG,MTR33122,Enyalius,catenatus,Itapebi,BA,NA,-15.89327,-39.53118,GPS exact latlong,itp,cat_itp_MTR33122,2389900,NA
@@ -41,11 +41,11 @@ plate0,CGCTTCTCTGTGCAGG,MTR22253,Enyalius,catenatus,Wenceslau Guimaraes,BA,NA,-1
 plate0,CTCATTAACCTGCAGG,MTR22254,Enyalius,catenatus,Wenceslau Guimaraes,BA,NA,-13.5806,-39.70467,GPS exact latlong,wgu,cat_wgu_MTR22254,2206670,NA
 plate0,TCGCCGCAATTGCAGG,MTR33140,Enyalius,catenatus,Itapebi,BA,NA,-15.8936,-39.53102,GPS exact latlong,itp,cat_itp_MTR33140,1418760,NA
 plate0,CATGCATACTTGCAGG,H0309,Enyalius,perditus,Buri,SP,NA,-23.85067,-48.46584,Biogeomancer: Buri (GeoNet Names (NIMA):64748812:populated places); Sao Paulo (GADM:693:countries; 1st order divisions); Brazil (GADM:32:countries),buri,per_buri_H0309,1712788,NA
-plate0,ATCCATAAGATGCAGG,MTR33049,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.219970000000004,GPS exact latlong,barr,pic_barr_MTR33049,2348554,NA
-plate0,CTGTTAGATTTGCAGG,MTR33050,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.219970000000004,GPS exact latlong,barr,pic_barr_MTR33050,3354369,NA
-plate0,GCACGTCTCCTGCAGG,MTR34443,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.219970000000004,GPS exact latlong,barr,pic_barr_MTR34443,1071183,NA
-plate0,TAACTGGTACTGCAGG,MTR34444,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.219970000000004,GPS exact latlong,barr,pic_barr_MTR34444,2262861,NA
-plate0,GCCGGTGATTTGCAGG,MTR34564,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.219970000000004,GPS exact latlong,barr,pic_barr_MTR34564,2242333,NA
+plate0,ATCCATAAGATGCAGG,MTR33049,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.21997,GPS exact latlong,barr,pic_barr_MTR33049,2348554,NA
+plate0,CTGTTAGATTTGCAGG,MTR33050,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.21997,GPS exact latlong,barr,pic_barr_MTR33050,3354369,NA
+plate0,GCACGTCTCCTGCAGG,MTR34443,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.21997,GPS exact latlong,barr,pic_barr_MTR34443,1071183,NA
+plate0,TAACTGGTACTGCAGG,MTR34444,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.21997,GPS exact latlong,barr,pic_barr_MTR34444,2262861,NA
+plate0,GCCGGTGATTTGCAGG,MTR34564,Enyalius,pictus,Barrolandia,BA,NA,-16.09302,-39.21997,GPS exact latlong,barr,pic_barr_MTR34564,2242333,NA
 plate0,ATCAGTAGAATGCAGG,MTR21438,Enyalius,pictus,Boa Nova,BA,NA,-14.40656,-40.09737,GPS of the reserve,boanova,pic_boanova_MTR21438,2136278,NA
 plate0,TGAGCCAGCTTGCAGG,JC1079,Enyalius,pictus,Leme do Prado,MG,NA,-17.08333,-42.66667,Biogeomancer: Leme do Prado (GeoNet Names (NIMA):64779558:populated places). Minas Gerais (GADM:681:countries; 1st order divisions). Brazil (GADM:32:countries),leme,pic_leme_JC1079,1237565,NA
 plate0,AGACGAATAGTGCAGG,MTR12080,Enyalius,pictus,Linhares,ES,NA,-16.53644,-39.12586,GPS exact latlong,lin,pic_lin_MTR12080,2293043,NA
@@ -101,7 +101,7 @@ plate1,GCCGAGGTGATGCAGG,II-H001,Enyalius,perditus,Pinhalão,PR,Pinhalão,-23.920
 plate1,ATTAGGAGGCTGCAGG,IIH129,Enyalius,perditus,Ortigueira,PR,Ortigueira,-24.21115,-50.92631,Google Earth municipality,orti,per_orti_IIH129,4688125,NA
 plate1,TTGCGCAAGCTGCAGG,CTMZ03587,Enyalius,perditus,Cristina,MG,Cristina,-22.21194,-45.26389,Miguel Rodrigues database,cris,per_cris_CTMZ03587,3918584,NA
 plate1,GAATTGTCGCTGCAGG,3317,Enyalius,perditus,Cunha,SP,Cunha,-23.12806,-45.05111,Miguel Rodrigues database,cunh,per_cunh_3317,5135645,NA
-plate1,ATGAAGGCAGTGCAGG,CTMZ03573,Enyalius,iheringii,Trilha Salesópolis-Petrobrás,SP,Caraguatatuba,-23.595,-45.4,Miguel Rodrigues database,crag,ihe_crag_CTMZ03573,4035263,NA
+plate1,ATGAAGGCAGTGCAGG,CTMZ03573,Enyalius,iheringii,Trilha Salesópolis-Petrobrás,SP,Caraguatatuba,-23.545,-45.4,Miguel Rodrigues database,crag,ihe_crag_CTMZ03573,4035263,nudged north by 0.05 degrees to overlap closest raster cell
 plate1,ATCCATAAGATGCAGG,A1D1,Enyalius,iheringii,Estação Biológica de Boracéia,SP,Salesópolis,-23.649,-45.88004,loc derived Google Earth,sale,ihe_sale_A1D1,4354290,NA
 plate1,ATTGCCACCGTGCAGG,A1,Enyalius,iheringii,Estação Biológica de Boracéia,SP,Salesópolis,-23.649,-45.88004,loc derived Google Earth,sale,ihe_sale_A1,4150020,NA
 plate1,GGTGAGTCGGTGCAGG,D2,Enyalius,iheringii,Estação Biológica de Boracéia,SP,Salesópolis,-23.649,-45.88004,loc derived Google Earth,sale,ihe_sale_D2,3805890,NA
@@ -125,16 +125,16 @@ plate2,TGTCCTAGGATGCAGG,CX87_pos15,Enyalius,iheringii,Juquitiba,SP,Juquitiba,-23
 plate2,GCTGCACGGTTGCAGG,H0189,Enyalius,iheringii,Juquitiba,SP,Juquitiba,-23.90917,-47.08047,Google Earth approximation,juqi,ihe_juqi_H0189,3052346,NA
 plate2,GCATGGAGGTTGCAGG,H-0160,Enyalius,iheringii,Juquitiba,SP,Juquitiba,-23.90917,-47.08047,Google Earth approximation,juqi,ihe_juqi_H0160,3789161,NA
 plate2,TAACTGGTACTGCAGG,H-0199,Enyalius,iheringii,Juquitiba,SP,Juquitiba,-23.90917,-47.08047,Google Earth approximation,juqi,ihe_juqi_H0199,5788386,NA
-plate2,CAAGAGACGTTGCAGG,LG929,Enyalius,iheringii,Estação Ecológica da Juréia; Guarauzinho,SP,Peruíbe,-24.38533,-47.01956,loc derived Google Earth,peru,ihe_peru_LG929,4738230,NA
+plate2,CAAGAGACGTTGCAGG,LG929,Enyalius,iheringii,Estação Ecológica da Juréia; Guarauzinho,SP,Peruíbe,-24.38533,-47.06956,loc derived Google Earth,peru,ihe_peru_LG929,4738230,nudged west by 0.05 degrees to overlap closest raster cell
 plate2,ATCAGTAGAATGCAGG,CTMZ03575,Enyalius,iheringii,Parque Estadual da Serra do Mar (Núcleo Itutinga-Pilões; trilha São Bernardo),SP,Miracatú,-24.28333,-47.3,Miguel Rodrigues database,mira,ihe_mira_CTMZ03575,3857314,NA
 plate2,CTCCTTGGAGTGCAGG,3117,Enyalius,iheringii,Sete Barras,SP,Sete Barras,-24.38488,-47.92785,Google Earth municipality,sete,ihe_sete_3117,2569449,NA
 plate2,TATCGTTAGTTGCAGG,3574,Enyalius,iheringii,Iguape,SP,Iguape,-24.65361,-47.5275,Miguel Rodrigues database,igua,ihe_igua_3574,2507011,NA
-plate2,ATCCGTCTACTGCAGG,3533,Enyalius,iheringii,PE Ilha do Cardoso; Cananéia,SP,Cananéia,-25.11056,-47.93278,Miguel Rodrigues database,cana,ihe_cana_3533,3606253,NA
-plate2,GCCGCAATGCTGCAGG,3436,Enyalius,iheringii,PE Ilha do Cardoso; Cananéia,SP,Cananéia,-25.10111,-47.93139,Miguel Rodrigues database,cana,ihe_cana_3436,3107839,NA
-plate2,GTATATCCACTGCAGG,3437,Enyalius,iheringii,PE Ilha do Cardoso; Cananéia,SP,Cananéia,-25.10111,-47.93139,Miguel Rodrigues database,cana,ihe_cana_3437,4890840,NA
-plate2,GCCGGTGATTTGCAGG,3543,Enyalius,iheringii,Cananéia,SP,Cananéia,-25.21667,-48.03889,Miguel Rodrigues database,cana,ihe_cana_3543,4694674,NA
-plate2,AAGACCAATCTGCAGG,3593,Enyalius,iheringii,Jacupiranga,SP,Jacupiranga,-24.94167,-48.03833,Miguel Rodrigues database,jacu,ihe_jacu_3593,2810588,NA
-plate2,AAGTCGAGTATGCAGG,3594,Enyalius,iheringii,Jacupiranga,SP,Jacupiranga,-24.94167,-48.03833,Miguel Rodrigues database,jacu,ihe_jacu_3594,3454980,NA
+plate2,ATCCGTCTACTGCAGG,3533,Enyalius,iheringii,PE Ilha do Cardoso; Cananéia,SP,Cananéia,-25.11056,-47.98278,Miguel Rodrigues database,cana,ihe_cana_3533,3606253,nudged west by 0.05 degrees to overlap closest raster cell
+plate2,GCCGCAATGCTGCAGG,3436,Enyalius,iheringii,PE Ilha do Cardoso; Cananéia,SP,Cananéia,-25.10111,-47.98139,Miguel Rodrigues database,cana,ihe_cana_3436,3107839,nudged west by 0.05 degrees to overlap closest raster cell
+plate2,GTATATCCACTGCAGG,3437,Enyalius,iheringii,PE Ilha do Cardoso; Cananéia,SP,Cananéia,-25.10111,-47.98139,Miguel Rodrigues database,cana,ihe_cana_3437,4890840,nudged west by 0.05 degrees to overlap closest raster cell
+plate2,GCCGGTGATTTGCAGG,3543,Enyalius,iheringii,Cananéia,SP,Cananéia,-25.21667,-48.08889,Miguel Rodrigues database,cana,ihe_cana_3543,4694674,nudged west by 0.05 degrees to overlap closest raster cell
+plate2,AAGACCAATCTGCAGG,3593,Enyalius,iheringii,Jacupiranga,SP,Jacupiranga,-24.94167,-48.08833,Miguel Rodrigues database,jacu,ihe_jacu_3593,2810588,nudged west by 0.05 degrees to overlap closest raster cell
+plate2,AAGTCGAGTATGCAGG,3594,Enyalius,iheringii,Jacupiranga,SP,Jacupiranga,-24.94167,-48.08833,Miguel Rodrigues database,jacu,ihe_jacu_3594,3454980,nudged west by 0.05 degrees to overlap closest raster cell
 plate2,GCACGTCTCCTGCAGG,3588,Enyalius,iheringii,Jacupiranga,SP,Jacupiranga,-24.99556,-48.03528,Miguel Rodrigues database,jacu,ihe_jacu_3588,4176402,NA
 plate2,AGCTTCGATTTGCAGG,CTMZ03592,Enyalius,iheringii,Parque Estadual de Jacupiranga (Núcleo Caverna do Diabo-eldorado Paulista),SP,Eldorado,-24.63583,-48.40167,Miguel Rodrigues database,eldo,ihe_eldo_CTMZ03592,3055280,NA
 plate2,TCGTCTTAGTTGCAGG,CTMZ03593,Enyalius,iheringii,Parque Estadual de Jacupiranga (Núcleo Caverna do Diabo-eldorado Paulista),SP,Eldorado,-24.63583,-48.40167,Miguel Rodrigues database,eldo,ihe_eldo_CTMZ03593,3696301,NA

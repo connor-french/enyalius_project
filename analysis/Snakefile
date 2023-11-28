@@ -60,3 +60,4 @@ rule vcf_to_construct:
     expand("output/construct_matrices/construct_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
   script:
     "scripts/vcf_to_construct.py"
+
