@@ -100,7 +100,7 @@ analysis/data/vcfs/*
 
 # analysis output
 analysis/output/*
-analysis/output2/*
+
 
 # sandbox for exploring Enyalius data
 enyalius-sandbox.ipynb

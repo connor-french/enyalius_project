@@ -1,6 +1,6 @@
 ---
 title: "ABC Analysis"
-format: html
+format: gfm
 editor: visual
 ---
 
@@ -74,7 +74,7 @@ pca_df_ihe <- bind_cols(pca_ihe$x, sims_ihe)
 
 ggplot(pca_df_ihe, aes(x = PC1, y = PC2, color = transformation)) +
   geom_point(alpha = 0.5) +
-  scale_color_viridis_c() +
+  scale_color_viridis_d() +
   theme_bw()
 ```
 
