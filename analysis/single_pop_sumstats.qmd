@@ -1,6 +1,8 @@
 ---
 title: "Single population summary statistics"
-format: gfm
+format: 
+  html:
+    code-fold: true
 params:
   site_pi: ""
   ind_pi: ""
@@ -117,7 +119,6 @@ num_sites <- map(num_sites_paths, \(x) read_table(x, col_names = "num_sites", na
 ## E. catenatus
 
 ### number of sites
-
 ```{r}
 #| label: cat-numsites
 cat_num_sites <- num_sites %>% 
@@ -129,6 +130,7 @@ ggplot(cat_num_sites, aes(x = dataset, y = num_sites)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
+
 
 ### per-site pi
 
@@ -226,10 +228,10 @@ ggplot(cat_sfs, aes(x = rank, y = count, color = dataset)) +
   theme_bw() 
 ```
 
+
 ## E. pictus
 
 ### number of sites
-
 ```{r}
 #| label: pic-numsites
 pic_num_sites <- num_sites %>% 
@@ -338,10 +340,10 @@ ggplot(pic_sfs, aes(x = rank, y = count, color = dataset)) +
   theme_bw() 
 ```
 
+
 ## E. perditus
 
 ### number of sites
-
 ```{r}
 #| label: per-numsites
 per_num_sites <- num_sites %>% 
@@ -450,10 +452,10 @@ ggplot(per_sfs, aes(x = rank, y = count, color = dataset)) +
   theme_bw() 
 ```
 
+
 ## E. iheringii
 
 ### number of sites
-
 ```{r}
 #| label: ihe-numsites
 ihe_num_sites <- num_sites %>% 
@@ -561,5 +563,7 @@ ggplot(ihe_sfs, aes(x = rank, y = count, color = dataset)) +
   scale_color_viridis_d() +
   theme_bw() 
 ```
+
+
 
 :::
