@@ -9,7 +9,9 @@ library(ENMeval)
 library(sf)
 
 
-# function to read predictors
+
+# define functions --------------------------------------------------------
+
 ## bio is a vector of bioclims to read in. It should only contain the bioclim name, e.g. "bio02"
 ## timeslice is which time period to read in for historical climate. Should be a single number
 ## when rename is TRUE, it renames the variables to agree with the variable names used in modeling
@@ -43,7 +45,7 @@ read_predictors <- function(timeslice, rename = TRUE) {
 
 # I have to crop according to the bioclims because they have the coastline
 crop_mask <- function(pred_rast, bioclim) {
-  # crop forest cover by predictor
+  # crop by predictor
   c <- crop(pred_rast, bioclim)
 
   # mask
@@ -56,10 +58,13 @@ crop_mask <- function(pred_rast, bioclim) {
 }
 
 
+
+# read in predictors ------------------------------------------------------
+
 # read in predictors
 preds <- lapply(rev(seq(-200, 20, 10)), read_predictors)
 
-# make names of predictor timesteps reflect the year annotations in the forest cover
+# make names of predictor timesteps reflect the year annotations
 names(preds) <- paste0("y", 0:22, "k")
 
 # read in cropped bioclims to crop and mask the predictors with
@@ -71,10 +76,13 @@ preds_masked <- map(names(preds), \(x) crop_mask(pred_rast = preds[[x]], bioclim
 # name according to predictor raster list names
 names(preds_masked) <- names(preds)
 
+
+# iheringii ---------------------------------------------------------------
+
 # read in model
 sdm_iheringii <- readRDS(here("analysis", "output", "sdm_models", "sdm_iheringii.rds"))
 
-# predict to the full extent of the forest
+# predict to the full extent
 projections_ihe <- map(preds_masked, \(x) dismo::predict(sdm_iheringii@models[["rm.2_fc.LQ"]], x))
 
 # read in iheringii locs
@@ -97,10 +105,12 @@ points(vect(locs_ihe))
 writeRaster(projections_ihe_crop, here("analysis", "output", "sdm_projections", "projections_ihe.tif"))
 
 
+# catenatus ---------------------------------------------------------------
+
 # read in model
 sdm_catenatus <- readRDS(here("analysis", "output", "sdm_models", "sdm_catenatus.rds"))
 
-# predict to the full extent of the forest
+# predict to the full extent
 projections_cat <- map(preds_masked, \(x) dismo::predict(sdm_catenatus@models[["rm.0.5_fc.L"]], x))
 
 # read in catenatus locs
@@ -122,15 +132,34 @@ points(vect(locs_cat))
 # write predictions to file
 writeRaster(projections_cat_crop, here("analysis", "output", "sdm_projections", "projections_cat.tif"))
 
-plot(stdev(projections_ihe_crop, na.rm = TRUE))
-points(vect(locs_ihe))
 
-plot(stdev(projections_cat_crop, na.rm = TRUE))
-points(vect(locs_cat))
+# perditus ----------------------------------------------------------------
+# read in model
+sdm_perditus <- readRDS(here("analysis", "output", "sdm_models", "sdm_perditus.rds"))
 
-cell_cat <- cellFromXY(proj_cat_crop_agg, st_coordinates(locs_cat))
-rowcol_cat <- rowColFromCell(proj_cat_crop_agg, cell_cat) - 1
+# predict to the full extent
+projections_per <- map(preds_masked, \(x) dismo::predict(sdm_perditus@models[["rm.2_fc.LQ"]], x))
 
-plot(projections_ihe_crop[[1]])
-points(vect(locs_ihe))
+# read in perditus locs
+locs_per <- st_read(here("analysis", "output", "thinned_localities", "perditus_thinned.gpkg"))
+
+# crop to perditus locs with buffer
+## larger buffer than used to train SDM to allow for dispersal
+mcp_per <- st_convex_hull(st_union(locs_per)) %>%
+  st_buffer(dist = units::set_units(2.0, degree)) %>%
+  terra::vect()
+
+projections_per_crop <- crop(rast(projections_per), mcp_per) %>%
+  mask(mcp_per)
+
+# plot stability of environment through time
+plot(stdev(projections_per_crop, na.rm = TRUE))
+points(vect(locs_per))
+
+# write predictions to file
+writeRaster(projections_per_crop, here("analysis", "output", "sdm_projections", "projections_per.tif"))
+
+
+
+
 
