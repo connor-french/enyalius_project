@@ -36,6 +36,7 @@ Based on all quality control assessments, I've determined that batch effects are
 library(here)
 library(tidyverse)
 library(sf)
+library(patchwork)
 
 source(here("assembly", "scripts", "read_ipyrad_stats.R"))
 source(here("assembly", "scripts", "plot_ipyrad_pca.R"))
@@ -56,7 +57,8 @@ clust_thresh <- paste0("clust", parse_params(params$thresh))
 
 ```
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ## Batch effects
 
 The *Enyalius* individuals were sequenced across multiple plates, which can result in non-biological variation among samples due to library prep and sequencing artifacts. Here, I'm visualizing heterozygosity, missingness, and genetic structure (PCA) patterns across sequencing plates and species.
@@ -87,11 +89,12 @@ locs_stats_94 <- left_join(
   # there are two concatenated samples that don't have plate info
   # don't want outgroups
   filter(!is.na(plate),
-         species %in% c("cat", "ihe", "per", "pic")) 
+         species %in% c("cat", "ihe", "per")) 
 
 ```
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ## Heterozygosity
 
 Heterozygosity varies across plates, but species mostly correspond with a single plate. For species sequenced across multiple plates, there doesn't appear to be plate effects.
@@ -211,11 +214,11 @@ legend(x="left", legend=c("low", "medium", "high"),
      fill=colorRampPalette(RColorBrewer::brewer.pal(8, "Oranges"))(3))
 ```
 
-There appears to be some within-species variation, but it's not due to a batch effect. I visualized *E. pictus* and *E. iheringii* because they have individuals spread across plates.
+There appears to be some within-species variation, but it's not due to a batch effect.
 
 ```{r}
 #| label: pictus-iheringii-outliers
-#| layout-ncol: 1
+
 
 locs_sdf_94 <- left_join(
   sdf %>% rename(id_code = sample), 
@@ -223,20 +226,20 @@ locs_sdf_94 <- left_join(
   by = "id_code"
 )
 
-locs_sdf_94 %>% 
-  filter(species == "pictus") %>% 
-  select(starts_with("pic"), plate) %>% 
-  pivot_longer(starts_with("pic"), names_to = "sample", values_to = "num_shared") %>% 
+miss_cat <- locs_sdf_94 %>% 
+  filter(species == "catenatus") %>% 
+  select(starts_with("cat"), plate) %>% 
+  pivot_longer(starts_with("cat"), names_to = "sample", values_to = "num_shared") %>% 
   ggplot(aes(x = num_shared, fill = plate)) + 
   geom_dotplot(binwidth = 6500) +
   labs(x = "Number of shared alleles",
        y = "",
-       title = "Number of shared alleles for E. pictus",
+       title = "Number of shared alleles for E. catenatus",
        caption = "The zero values are due to the diagonal in the sharing matrix.") +
   theme_bw() +
   theme(legend.position = "bottom")
   
-locs_sdf_94 %>% 
+miss_ihe <- locs_sdf_94 %>% 
   filter(species == "iheringii") %>% 
   select(starts_with("ihe"), plate) %>% 
   pivot_longer(starts_with("ihe"), names_to = "sample", values_to = "num_shared") %>% 
@@ -249,11 +252,29 @@ locs_sdf_94 %>%
   theme_bw() +
   theme(legend.position = "bottom")
 
+
+miss_per <- locs_sdf_94 %>% 
+  filter(species == "perditus") %>% 
+  select(starts_with("per"), plate) %>% 
+  pivot_longer(starts_with("per"), names_to = "sample", values_to = "num_shared") %>% 
+  ggplot(aes(x = num_shared, fill = plate)) + 
+  geom_dotplot(binwidth = 6500) +
+  labs(x = "Number of shared alleles",
+       y = "",
+       title = "Number of shared alleles for E. perditus",
+       caption = "The zero values are due to the diagonal in the sharing matrix.") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+miss_cat 
+miss_ihe
+miss_per
 ```
 
 ## PCA
 
-I'm using `ipyrad` (@eaton2020) to conduct per-species PCAs. I'm looking for outliers according to their plate.
+I'm using `ipyrad` (&#x0040;eaton2020) to conduct per-species PCAs. I'm looking for outliers according to their plate.
 
 I'm using a minimum coverage of 50% per locus to minimize the effect of missing data and subsampling a single SNP per locus to reduce physical linkage. `NA` plate numbers indicate a few individuals who had to have their FASTAs concatenated due to a data transfer error.
 
@@ -276,7 +297,8 @@ names(pca_batch_list) <- map_chr(pca_batch_paths, \(x) basename(x) %>% str_remov
 pca_batch_df <- bind_rows(pca_batch_list, .id = "name")
 ```
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ## E. catenatus
 
 ```{r}
@@ -396,14 +418,15 @@ plot_pca(
   color_var = "plate"
 )
 ```
-:::
+
+::: 
 :::
 
 ## Cluster evaluation
 
-To determine the appropriate clustering threshold, I am following @mccartney-melstad2019's workflow, which includes the following steps:
+To determine the appropriate clustering threshold, I am following &#x0040;mccartney-melstad2019's workflow, which includes the following steps:
 
--   Genetic diversity (heterozygosity \~ number of SNPs recovered)
+-   Genetic diversity (heterozygosity ~ number of SNPs recovered)
 
 -   Cumulative variance explained by major principal components
 
@@ -411,7 +434,7 @@ To determine the appropriate clustering threshold, I am following @mccartney-mel
 
 -   Slope of isolation by distance
 
-Note, `ipyrad` (@eaton2020) no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs. In addition, phylogenetic signal did not do a great job of discriminating among clusters, so I am not going to use it here.
+Note, `ipyrad` (&#x0040;eaton2020) no longer outputs paralog flags, so I am not performing the original first step, visualizing the fraction of inferred paralogs. In addition, phylogenetic signal did not do a great job of discriminating among clusters, so I am not going to use it here.
 
 ```{r}
 #| label: read-stats-files
@@ -432,7 +455,8 @@ total_snps <- map_df(ip_stats_files, read_total_snps) %>%
 
 ```
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ## Genetic diversity
 
 When clustering thresholds are too low, paralogs get clumped together. This leads to higher genetic diversity. McCartney-Melstad et al. assume that bioinformatic filters remove paralogous loci by flagging them, but *ipyrad* doesn't do this, apart from the `max_alleles_consens` filter. So, clustering thresholds that are too low lead to higher inferred genetic diversity/heterozygosity. This should also lead to higher numbers of total SNPs. Therefore, an optimal clustering threshold should lead to lower heterozygosity and maximal numbers of SNPs.
@@ -506,7 +530,8 @@ pca_var_df <- bind_rows(pca_var_list, .id = "name")
 
 I'm splitting the PCAs by species and evaluating the clusters per-species.
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ## E. catenatus
 
 ```{r}
@@ -572,6 +597,7 @@ pca_cumvar_all <-
 pca_cumvar_all
 
 ```
+
 :::
 
 ## Missingness
@@ -580,7 +606,7 @@ Over-splitting homologous loci into multiple loci is most likely to occur in gen
 
 I'm counting the number of shared loci between individual pairs using `Sharing` from the `ipyrad.analysis` module (performed in an earlier step of the Snakemake pipeline). So, this will result in the opposite relationship with genetic diversity, compared with missingness (negative rather than positive).
 
-I'm estimating the pairwise genetic distance among individuals by calculating the Euclidean distance of PC-space between individuals, *sensu* @shirk2017. I'm using the PCAs conducted in the previous section and selecting the first 20 PCs as the information contained drops considerably after this. Additionally, to simplify comparisons, I'm only considering the matrices that contain individuals from all ingroup species.
+I'm estimating the pairwise genetic distance among individuals by calculating the Euclidean distance of PC-space between individuals, *sensu* &#x0040;shirk2017. I'm using the PCAs conducted in the previous section and selecting the first 20 PCs as the information contained drops considerably after this. Additionally, to simplify comparisons, I'm only considering the matrices that contain individuals from all ingroup species.
 
 > Results: The correlation between missingness and genetic distance varies, then sharply increases after a 0.92 clustering threshold. So, a threshold less than 0.94 should be okay according to this metric.
 
@@ -667,5 +693,6 @@ ggplot(gd_slope_df, aes(x = clust_thresh, y = geo_dist * 1000)) +
   labs(y = "Increase in genetic \ndistance per kilometer") +
   theme_bw()
 ```
-:::
+
+::: 
 :::

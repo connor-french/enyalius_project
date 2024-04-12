@@ -1,0 +1,251 @@
+---
+title: "Model Classification"
+format: gfm
+execute:
+  message: false
+  warning: false
+editor: visual
+---
+
+# Model Classification
+
+I'm going to classify between "linear" and "threshold" models using boosted regression trees.
+
+## Setup
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+library(tidyverse)
+library(doParallel)
+
+# set seed for reproducibility (this script is copied for each species, so the seeds are retained for each species)
+set.seed(875098)
+
+
+args = commandArgs(trailingOnly=TRUE)
+
+# arg input:
+# args[1] = linear folder
+# args[2] = threshold folder
+# args[3] = empirical sumstats path
+# args[4] = output folder
+# args[5] = prefix
+# args[5] = number of cores to use
+
+# read in sumstats
+##
+### Simulations
+
+
+# function to read in simulations
+read_sims <- function(folder) {
+
+  params_paths <- list.files(folder, pattern = "params", full.names = TRUE)
+
+  sumstats_paths <- list.files(folder, pattern = "sumstats", full.names = TRUE)
+
+  demo_paths <- list.files(folder, pattern = "demo_summary", full.names = TRUE)
+
+
+  params <- map_df(params_paths, read_csv)
+
+  # only retain sumstats we're going to use
+  sumstats <- map_df(sumstats_paths, read_csv) %>%
+    select(
+      -starts_with("sfs_h3"),
+      -starts_with("pi_pop")
+    )
+
+  demo_sum <- map_df(demo_paths, read_csv)
+
+  sims <- bind_cols(params, sumstats, demo_sum)
+
+  return(sims)
+
+}
+
+linear_folder <- "analysis/output/simulations/sims_ihe_linear"
+threshold_folder <- "analysis/output/simulations/sims_ihe_threshold"
+
+# linear sims
+sims_lin <- read_sims(linear_folder) %>%
+  # add column that defines the model
+  mutate(model = "linear") %>% 
+  select(-morans_i)
+
+# threshold sims
+sims_thresh <- read_sims(threshold_folder) %>%
+  mutate(model = "threshold")
+
+# bind into single df and add ID column (my iterater for the sim IDs in the original output didn't work)
+sims <- bind_rows(sims_lin, sims_thresh) %>%
+  mutate(
+    sim_id = str_c("sim_", row_number())
+  )
+
+empirical_path <- "analysis/output/empirical_sumstats/iheringii_sumstats.csv"
+
+### Empirical
+empirical <- read_csv(empirical_path) %>%
+  select(
+    starts_with("pi_a"),
+    starts_with("pi_sd_a"),
+    starts_with("taj"),
+    starts_with("sfs"),
+    starts_with("dxy"),
+    starts_with("ibd"),
+    -contains("fst")
+  ) %>%
+  rename_with(
+    ~str_remove(.x, "dxy_"),
+    starts_with("ibd")
+  )
+
+sims_split <- initial_split(sims, prop = 4/5)
+sims_train <- training(sims_split)
+sims_test <- testing(sims_split)
+
+# set up recipe. I'm centering and scaling all predictors
+recipe <-
+  recipe(formula = model ~ ., data = sims_train) %>%
+  step_rm(starts_with("sim_id")) %>%
+  step_rm(starts_with("param_id")) %>%
+  step_zv(all_predictors())
+
+# using 5-fold cross validation
+cv <- vfold_cv(sims_train, v = 5)
+
+
+# set up model specifications and tuning. I'm tuning 6 parameters and using Bayesian optimization search
+
+spec <-
+  boost_tree(
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune(),
+    sample_size = tune()
+  ) %>%
+  set_mode("classification") %>%
+  set_engine("xgboost")
+
+# create a workflow from the recipe and model specs
+workflow <-
+  workflow() %>%
+  add_recipe(recipe) %>%
+  add_model(spec)
+
+# get parameters to specify hyperparameter space to tune over
+param <- spec %>%
+  extract_parameter_set_dials()
+
+grid_param <- grid_latin_hypercube(param, size = 5)
+
+########### MODEL TUNING ###########
+# perform the model tuning
+
+# start up parallel process
+all_cores <- parallel::detectCores(logical = FALSE)
+
+core_error <- function(core_in, core_all) {
+  if (core_in > core_all) {
+    stop("You're requesting too many cores! Select as many or fewer cores than are available.")
+  }
+}
+
+core_error(args[6], all_cores)
+
+cl <- makeCluster(all_cores, type="FORK")
+registerDoParallel(cl)
+
+# begin model tuning
+# tune <-
+#   tune_bayes(
+#     workflow,
+#     resamples = cv,
+#     param_info = param,
+#     # Generate five at semi-random to start
+#     initial = 8,
+#     iter = 50,
+#     metrics = metric_set(roc_auc, accuracy),
+#     control = control_bayes(
+#       no_improve = 30,
+#       verbose = FALSE,
+#       parallel_over = "everything"
+#       )
+#   )
+
+tune <- tune_grid(
+    workflow,
+    resamples = cv,
+    grid = grid_param,
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_grid(save_pred = TRUE)
+)
+
+stopCluster(cl)
+
+
+```
+
+```{r}
+tune <- read_rds("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/model_classification/test_ihe_classification_tuning_results.rds")
+```
+
+
+Predict
+
+```{r}
+#| label: predict-train-ihe
+
+
+```
+
+```{r}
+#| label: predict-test-ihe
+
+set.seed(234889996)
+
+best <- select_best(tune, metric = "accuracy")
+workflow_final <- workflow %>% 
+  finalize_workflow(best)
+
+last_fit <- workflow_final %>% 
+  last_fit(split = sims_split)
+
+last_fit %>%
+  collect_predictions() %>% 
+  conf_mat(truth = transformation, estimate = .pred_class) %>%
+  pluck(1) %>% 
+  prop.table(1)
+```
+
+```{r}
+#| label: predict-empirical-ihe
+
+workflow_final_ihe %>%
+  fit(sims_ihe_train) %>% 
+  predict(empirical_ihe, "prob")
+
+```
+
+## Assess extrapolation of empirical data
+
+Using the R package [applicable](https://applicable.tidymodels.org/articles/continuous-data.html) to see if the empirical data are similar to the training data. What it does is perform a PCA, select the number of PCs that describe 95% of the variation in the data, then compare the similarity of each training data point to the mean of the set of training data. Then, it evaluates the distance of the test data to the mean. The test data are considered a good fit if they have a small distance relative to the distances of the training data.
+
+```{r}
+#| label: extrapolation-ihe
+
+recipe_ihe <- 
+  recipe(formula = transformation ~ ., data = sims_ihe_train) %>% 
+  step_zv(all_predictors()) 
+
+pca_ihe <- apd_pca(recipe_ihe, sims_ihe_train)
+
+pca_score_ihe <- score(pca_ihe, empirical_ihe)
+
+pca_score_ihe %>% select(matches("PC0[1-3]"), contains("distance"))
+
+```

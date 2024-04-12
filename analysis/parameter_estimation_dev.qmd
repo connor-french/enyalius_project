@@ -1,0 +1,737 @@
+---
+title: "Parameter estimation in python dev"
+format: gfm
+jupyter: python3
+execute: 
+  warning: false
+  error: false
+  eval: false
+---
+
+## Setup
+```{python}
+#| label: setup
+from glob import glob
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import mean_absolute_error, mean_squared_error, PredictionErrorDisplay
+from skopt import BayesSearchCV
+from skopt import dump as skdump, load as skload
+from skopt.space import Real, Integer
+from skopt.plots import plot_convergence, plot_evaluations
+# for CPU machines:
+## mamba install -c conda-forge py-xgboost-cpu
+# for GPU machines (when I run remote):
+## mamba install -c conda-forge py-xgboost-gpu
+from xgboost import XGBRegressor
+from mapie.regression import MapieRegressor
+from plotnine import ggplot, geom_segment, geom_point, aes, theme_bw, lims, labs, geom_hline, theme, element_blank, geom_histogram
+import patchworklib as pw
+```
+
+## Set random seed
+
+```{python}
+#| label: rand-seed
+
+## ihe: 1212
+## cat: 212121
+## per: 1313
+np.random.seed(1212)
+
+```
+
+## Import and clean data
+
+Some `threshold` transformations have `hinge` in the basename, so I have to submit "hinge" as the transformation in `import_data()`.
+
+```{python}
+# function to import data for model classification
+def import_data(folder: str, transformation: str, num_admix: int) -> pd.DataFrame:
+
+  # specify path to sumstats
+  sumstats_paths = glob(f"{folder}/*{transformation}*sumstats.csv")
+
+  # only concatenate if there is more than one file
+  if len(sumstats_paths) > 1:
+    sumstats = pd.concat((pd.read_csv(f) for f in sumstats_paths), ignore_index=True)
+  else:
+    sumstats = pd.read_csv(sumstats_paths)
+  
+
+  # remove the columns we're not using for analysis (per-deme pi, the third hill number, morans I, IDs)
+  sumstats = sumstats.loc[:,~sumstats.columns.str.startswith('pi_pop')]
+  sumstats = sumstats.loc[:,~sumstats.columns.str.startswith('sfs_h3')]
+  sumstats = sumstats.drop(columns = "morans_i")
+  sumstats = sumstats.loc[:,~sumstats.columns.str.contains("_id")]
+
+
+  # read in params to get max_k and Nm
+  params_paths = glob(f"{folder}/*{transformation}*params.csv")
+
+  if len(params_paths) > 1:
+    params = pd.concat((pd.read_csv(f) for f in params_paths), ignore_index=True)
+  else:
+    params = pd.read_csv(params_paths)
+
+  params = params.loc[:, ["max_k", "Nm"]]
+  
+
+  # read in demography summary to get admix pop sizes
+  
+  demo_paths = glob(f"{folder}/*{transformation}*demo_summary.csv")
+
+  if len(demo_paths) > 1:
+    demo = pd.concat((pd.read_csv(f) for f in demo_paths), ignore_index=True)
+  else:
+    demo = pd.read_csv(demo_paths)
+
+  # filter for the columns that contain admixture population sizes
+  admix_cols = []
+  for i in range(1, num_admix + 1):
+    admix_cols.append(f"admix_n_a{i}")
+
+  demo = demo.loc[:, admix_cols]
+
+  y = pd.concat([params, demo], axis = 1)
+
+  X = sumstats
+
+
+
+  return X, y
+
+
+
+X, y = import_data("output/simulations/sims_ihe_threshold", transformation = "hinge", num_admix = 2)
+
+```
+
+
+
+## Split into train/test split
+
+```{python}
+#| label: train-test-split
+
+# get a seed based on the global seed for input into function
+split_seed = np.random.randint(1, 1e6)
+
+X_train, X_test, y_train, y_test = train_test_split(
+  X, y, 
+  test_size=0.2, 
+  random_state=split_seed)
+
+
+```
+
+```{python}
+#| label: write-train-test
+
+X_train.to_csv("output/parameter_estimation/reg_tuning_ihe/x_train_ihe.csv", index = False)
+X_test.to_csv("output/parameter_estimation/reg_tuning_ihe/x_test_ihe.csv", index = False)
+y_train.to_csv("output/parameter_estimation/reg_tuning_ihe/y_train_ihe.csv", index = False)
+y_test.to_csv("output/parameter_estimation/reg_tuning_ihe/y_test_ihe.csv", index = False)
+```
+## Baseline model
+
+Creating a baseline model to compare the tuned model to. Used somewhat arbitrary values to initialize it with.
+
+> E. iheringii (MAE): train: max_k = 470.07, Nm = 0.30, admix_n_a1 = 296637.63, admix_n_a2 = 26447.05. test: max_k = 585.18, Nm = 0.36, admix_n_a1 = 366268.79, admix_n_a2 = 33728.64. 
+> E. catenatus: train: max_k = 827.18, Nm = 1.08, admix_n_a1 = 201191.63, admix_n_a2 & a3 = 64877.11. test: max_k = 987.90, Nm = 1.24, admix_n_a1 = 245899.49, admix_n_a2 & a3 = 82558.66.
+
+```{python}
+#| label: base-model
+pipe_baseline = make_pipeline(
+  StandardScaler(),
+  XGBRegressor(n_estimators=100, max_depth=4, eta=0.3, colsample_bytree = 0.8)
+)
+
+pipe_baseline.fit(X_train, y_train)
+
+# predict to training
+y_pred = pipe_baseline.predict(X_train)
+
+# predict to testing
+y_pred_test = pipe_baseline.predict(X_test)
+
+```
+
+Get mean eval stats for each response.
+```{python}
+#| label: mean-eval-stats
+
+def get_eval_stats(y_emp, y_pred, eval_stat):
+  
+  stat_list = []
+  for i in range(y_pred.shape[1]):
+    emp = y_emp.iloc[:,i]
+
+    pred = y_pred[:,i]
+
+    if eval_stat == "mae":
+      stat = mean_absolute_error(emp, pred)
+
+      stat_list.append(stat)
+    elif eval_stat == "rmse":
+      stat = mean_squared_error(emp, pred)
+      stat_list.append(stat)
+    else:
+      print("eval_stat should be mae or rmse")
+
+  stat_df = pd.Series(stat_list, index=y_emp.columns)
+
+  return(stat_df)
+
+mae_train = get_eval_stats(y_emp = y_train, y_pred = y_pred, eval_stat = "mae")
+
+mae_test = get_eval_stats(y_emp = y_test, y_pred = y_pred_test, eval_stat = "mae")
+
+
+
+```
+
+## Create modeling pipeline
+Using `make_pipeline` so I ensure that centering and scaling is applied consistently across CV folds, training, and testing data.
+
+
+### GPU pipeline
+```{python}
+#| label: create-pipeline-gpu
+pipe = make_pipeline(
+  StandardScaler(),
+  XGBRegressor(tree_method = "hist", device = "cuda", updater = "grow_gpu_hist", eval_metric = "mae")
+)
+
+pipe
+```
+
+### CPU pipeline
+
+```{python}
+#| label: create-pipeline-cpu
+
+## Create modeling pipeline
+pipe = make_pipeline(
+  StandardScaler(),
+  XGBRegressor(tree_method = "hist", eval_metric = "mae")
+)
+
+pipe
+```
+
+## Tune
+I'm using Bayesian optimization to tune model hyperparameters.
+
+```{python}
+#| label: set-parameters
+
+hparams = {
+  "xgbregressor__n_estimators": Integer(100, 2000),
+  "xgbregressor__eta": Real(1e-2, 1, "log-uniform"),
+  "xgbregressor__gamma": Real(1e-3, 1.5, "log-uniform"),
+  "xgbregressor__max_depth": Integer(1, 15),
+  "xgbregressor__subsample": Real(0.1, 1, "uniform"),
+  "xgbregressor__colsample_bytree": Real(0.1, 1.0, "uniform"),
+  "xgbregressor__alpha": Real(1e-3, 0.5, "uniform")
+}
+
+```
+
+
+```{python}
+#| label: tune
+
+# get a seed based on the global seed for input into function
+cv_seed = np.random.randint(1, 1e6)
+
+
+searchcv = BayesSearchCV(
+  pipe,
+    search_spaces=hparams,
+    n_iter = 50,
+    cv = 5,
+    scoring = "mae",
+    verbose=5,
+    random_state=cv_seed,
+    n_jobs = 5
+)
+
+np.int = int # have to do this because skopt hasn't totally updated their use of np.int vs int
+searchcv.fit(X_train, y_train)
+```
+
+### Write tuning results to file
+
+```{python}
+#| label: dump-tune
+cv_out_path = "cv_results.pkl"
+
+skdump(searchcv, out_path)
+
+```
+
+## Evaluate tuning
+
+**Replace path and seed with the appropriate values for the species I'm investigating**
+```{python}
+#| label: import-tune
+
+searchcv = skload(cv_out_path)
+
+X_train = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_ihe/x_train_ihe.csv")
+X_test = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_ihe/x_test_ihe.csv")
+y_train = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_ihe/y_train_ihe.csv")
+y_test = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_ihe/y_test_ihe.csv")
+
+```
+
+
+### Check for convergence
+```{python}
+#| label: plot-convergence
+plot_convergence(searchcv.optimizer_results_)
+
+```
+
+### Select the best model
+```{python}
+best_pipeline = searchcv.best_estimator_
+
+```
+
+### Fit the best model to the full training data
+```{python}
+#| label: fit-training
+best_pipeline.fit(X_train, y_train)
+```
+
+### Predict to the test data
+
+```{python}
+#| label: pred-test
+test_pred = best_pipeline.predict(X_test)
+
+```
+
+```{python}
+#| label: write-preds
+np.savetxt("output/parameter_estimation/reg_tuning_ihe/test_preds.csv", test_pred, delimiter = ",")
+```
+
+### Obs vs pred plots 
+
+```{python}
+#| label: obs-pred-plot-fn
+
+def plot_obspred(y, y_pred, resp, mae):
+  fig, axs = plt.subplots(ncols=2, figsize=(8, 4))
+
+  PredictionErrorDisplay.from_predictions(
+      y,
+      y_pred=y_pred,
+      kind="actual_vs_predicted",
+      ax=axs[0],
+  )
+  axs[0].set_title("Actual vs. Predicted values")
+  PredictionErrorDisplay.from_predictions(
+      y,
+      y_pred=y_pred,
+      kind="residual_vs_predicted",
+      ax=axs[1],
+  )
+  axs[1].set_title("Residuals vs. Predicted Values")
+  fig.suptitle(f"CV preds for {resp}. Mean Absolute Error = {mae: .2f}")
+  plt.tight_layout()
+
+```
+
+#### Max deme size
+
+```{python}
+#| label: obs-vs-pred-maxk
+
+mae_maxk = mean_absolute_error(y_test["max_k"], test_pred[:,0])
+
+plot_obspred(y_test["max_k"], test_pred[:,0], resp="max deme size", mae = mae_maxk)
+
+plt.show()
+```
+
+#### Nm
+
+```{python}
+#| label: obs-vs-pred-Nm
+
+mae_Nm = mean_absolute_error(y_test["Nm"], test_pred[:,1])
+
+plot_obspred(y_test["Nm"], test_pred[:,1], resp="Nm", mae = mae_Nm)
+
+plt.show()
+
+```
+
+#### Admix N 1
+
+```{python}
+#| label: obs-vs-pred-a1
+
+mae_a1 = mean_absolute_error(y_test["admix_n_a1"], test_pred[:,2])
+
+plot_obspred(y_test["admix_n_a1"], test_pred[:,2], resp="admixture N 1", mae = mae_a1)
+
+plt.show()
+
+```
+
+#### Admix N 2
+
+```{python}
+#| label: obs-vs-pred-a2
+
+mae_a2 = mean_absolute_error(y_test["admix_n_a2"], test_pred[:,3])
+
+plot_obspred(y_test["admix_n_a2"], test_pred[:,3], resp="admixture N 2", mae = mae_a2)
+
+plt.show()
+
+```
+
+#### Admix N 3
+
+```{python}
+#| label: obs-vs-pred-a3
+
+mae_a3 = mean_absolute_error(y_test["admix_n_a3"], test_pred[:,4])
+
+plot_obspred(y_test["admix_n_a3"], test_pred[:,4], resp="admixture N 3", mae = mae_a3)
+
+plt.show()
+
+```
+
+## Predict empirical data
+
+This code is now packaged in a script called `estimate_empirical_parameters.py` in the `scripts` directory.
+```{python}
+#| label: read-filter-func
+
+def read_empirical(path):
+
+  empirical_df = pd.read_csv(path)
+
+  # only keep relevant summary statistics
+  empirical_df = empirical_df.loc[:, empirical_df.columns.str.startswith(('pi_a', 'pi_sd_a', 'taj', 'sfs', 'dxy', 'ibd'))]
+
+  # remove columns that contain "fst" or "h3"
+  empirical_df = empirical_df.loc[:, ~empirical_df.columns.str.contains('fst|h3')]
+
+  # remove dxy from column names
+  empirical_df = empirical_df.rename(columns=lambda x: x.replace('_dxy', '') if x.startswith('ibd') else x)
+  
+  return empirical_df
+
+
+```
+
+```{python}
+#| label: plot-pred-int-func
+
+def plot_pred_int(pred_int, param, prior_range):
+  
+  y1 = pred_int[1][0][0]
+  y2 = pred_int[1][0][1]
+
+
+  ylims = prior_range.copy()
+  # in case interval is outside of prior range
+  if y1[0] < prior_range[0]:
+    ylims[0] = y1[0]
+
+  if y2[0] > prior_range[1]:
+    ylims[1] = y2[0]
+
+
+  emp_predplot_df = pd.DataFrame(
+    {
+      "x1": 1,
+      "x2": 1,
+      "y1": y1,
+      "y2": y2,
+      "center": pred_int[0]
+    }
+    
+  )
+
+  p = (
+      ggplot(emp_predplot_df) +
+        geom_segment(aes(x = "x1", xend = "x2", y = "y1", yend = "y2"), size = 3) +
+        geom_point(aes(x = "x1", y = "center"), size = 8) +
+        geom_hline(yintercept = prior_range[0], linetype = "dashed") +
+        geom_hline(yintercept = prior_range[1], linetype = "dashed") +
+        lims(y = (ylims[0], ylims[1])) +
+        labs(y = f"{param}", title = f"95% prediction interval of {param}") +
+        theme_bw() +
+        theme(axis_text_x = element_blank(), 
+        axis_title_x=element_blank())
+  )
+  
+  return p
+
+
+```
+
+```{python}
+#| label: pred-int-func
+
+# function to perform the whole predictive interval workflow
+def calc_pred_interval(x_train, y_train, emp_data, estimator, response, prior_range):
+  
+  # fit CV folds
+  mapie_cv = MapieRegressor(estimator, cv = 5, n_jobs = 5, agg_function = "median")
+  mapie_cv.fit(x_train, y_train[response])
+
+  # predict to empirical data
+  emp_pred = mapie_cv.predict(emp_data, alpha = [0.05])
+
+  # plot interval
+  pred_plot = plot_pred_int(pred_int = emp_pred, param = response, prior_range = prior_range)
+
+  return mapie_cv, emp_pred, pred_plot
+
+```
+
+
+### E. iheringii
+
+Read in tuning results just in case I haven't already
+```{python}
+#| label: read-tune-ihe
+tune_ihe = skload("output/parameter_estimation/ihe_cv_reg_results.pkl")
+best_pipeline = tune_ihe.best_estimator_
+
+```
+
+```{python}
+#| label: read-filter-emp-ihe
+emp_ihe_path = "output/empirical_sumstats/iheringii_sumstats.csv"
+
+emp_ihe = read_empirical(emp_ihe_path)
+
+```
+
+Run MAPIE using 5-fold CV so I can calculate prediction intervals using cv+ (a variant of jackknife+). I have to do this with each response, since there isn't inherant support for multioutput regression. This will likely yield slightly different predictions from the point predictions made without MAPIE, but will be very close. 
+
+##### Max deme size
+
+```{python}
+#| label: pred-int-maxk-ihe
+
+mapie_maxk, emp_pred_maxk, pred_plot_maxk = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_ihe, estimator = best_pipeline, response= "max_k", prior_range = [100, 5000])
+
+pred_plot_maxk
+```
+
+
+##### Nm
+
+```{python}
+#| label: pred-int-Nm-ihe
+
+mapie_Nm, emp_pred_Nm, pred_plot_Nm = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_ihe, estimator = best_pipeline, response= "Nm", prior_range = [0.1, 5])
+
+pred_plot_Nm
+```
+
+##### Admix N a1
+
+```{python}
+#| label: pred-int-a1-ihe
+
+mapie_a1, emp_pred_a1, pred_plot_a1 = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_ihe, estimator = best_pipeline, response= "admix_n_a1", prior_range = [1e6, 3e6])
+
+pred_plot_a1
+```
+
+##### Admix N a2
+
+```{python}
+#| label: pred-int-a2-ihe
+
+mapie_a2, emp_pred_a2, pred_plot_a2 = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_ihe, estimator = best_pipeline, response= "admix_n_a2", prior_range = [5e4, 5e5])
+
+pred_plot_a2
+```
+
+### E. catenatus
+
+Read in tuning results just in case I haven't already
+```{python}
+#| label: read-tune-cat
+tune_cat = skload("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_cat/reg_cv_tuning_cat.pkl")
+best_pipeline_cat = tune_cat.best_estimator_
+
+```
+
+Read in training data.
+
+```{python}
+#| label: read-train-cat
+
+X_train = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_cat/x_train_cat.csv")
+X_test = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_cat/x_test_cat.csv")
+y_train = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_cat/y_train_cat.csv")
+y_test = pd.read_csv("/Users/connorfrench/Dropbox/Old_Mac/School_Stuff/CUNY/enyalius-phylogeography/enyalius/analysis/output/parameter_estimation/reg_tuning_cat/y_test_cat.csv")
+```
+
+
+Read in empirical data.
+```{python}
+#| label: read-filter-emp-cat
+emp_cat_path = "output/empirical_sumstats/catenatus_sumstats.csv"
+
+emp_cat = read_empirical(emp_cat_path)
+
+```
+
+
+Run MAPIE using 5-fold CV so I can calculate prediction intervals using cv+ (a variant of jackknife+). I have to do this with each response, since there isn't inherant support for multioutput regression. This will likely yield slightly different predictions from the point predictions made without MAPIE, but will be very close. 
+
+##### Max deme size
+
+```{python}
+#| label: pred-int-maxk-cat
+
+mapie_cat_maxk, emp_pred_cat_maxk, pred_plot_cat_maxk = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_cat, estimator = best_pipeline_cat, response= "max_k", prior_range = [100, 5000])
+
+pred_plot_cat_maxk
+```
+
+
+##### Nm
+
+```{python}
+#| label: pred-int-Nm-cat
+
+mapie_cat_Nm, emp_pred_cat_Nm, pred_plot_cat_Nm = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_cat, estimator = best_pipeline_cat, response= "Nm", prior_range = [0.1, 5])
+
+pred_plot_cat_Nm
+```
+
+##### Admix N a1
+
+```{python}
+#| label: pred-int-a1-cat
+
+mapie_a1, emp_pred_a1, pred_plot_a1 = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_cat, estimator = best_pipeline_cat, response= "admix_n_a1", prior_range = [5e5, 2e6])
+
+pred_plot_a1
+```
+
+##### Admix N a2
+
+```{python}
+#| label: pred-int-a2-cat
+
+mapie_a2, emp_pred_a2, pred_plot_a2 = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_cat, estimator = best_pipeline_cat, response= "admix_n_a2", prior_range = [5e4, 1e6])
+
+pred_plot_a2
+```
+
+##### Admix N a3
+
+```{python}
+#| label: pred-int-a3-cat
+
+mapie_a3, emp_pred_a3, pred_plot_a3 = calc_pred_interval(x_train = X_train, y_train = y_train, emp_data = emp_cat, estimator = best_pipeline_cat, response= "admix_n_a3", prior_range = [5e4, 1e6])
+
+pred_plot_a3
+```
+
+
+
+## Exploration
+
+A spot to mess around and see what's going on in my models.
+
+```{python}
+cv_results = pd.DataFrame(searchcv.cv_results_)
+```
+
+
+```{python}
+import matplotlib.pyplot as plt
+
+# Get the variables that begin with "param_xgbregressor"
+param_vars = [var for var in cv_results.columns if var.startswith("param_xgbregressor")]
+
+# Iterate over each variable and create scatterplots
+for var in param_vars:
+    plt.scatter(cv_results[var], cv_results["rank_test_score"])
+    plt.xlabel(var)
+    plt.ylabel("rank_test_score")
+    plt.show()
+
+```
+
+
+```{python}
+(
+  ggplot(cv_results, aes(x = "param_xgbregressor__colsample_bytree", y = "mean_fit_time")) +
+  geom_point()
+)
+```
+
+
+## Function to run all empirical predictions
+
+```{python}
+import argparse
+import pandas as pd
+import matplotlib.pyplot as plt
+from plotnine import ggplot, aes, geom_point
+import pickle
+
+def main(emp_path, X_train, y_train, best_pipeline, searchcv, prior_ranges, responses, output_path):
+  emp = read_empirical(emp_path)
+
+  for i, response in enumerate(responses):
+    prior_range = prior_ranges[i]
+    mapie, emp_pred, pred_plot = calc_pred_interval(x_train=X_train, y_train=y_train, emp_data=emp, estimator=best_pipeline, response=response, prior_range=prior_range)
+    pred_plot.save(output_path + f"pred_plot_{response}.png")
+    with open(output_path + f"mapie_{response}.pkl", "wb") as f:
+      pickle.dump(mapie, f)
+    with open(output_path + f"emp_pred_{response}.pkl", "wb") as f:
+      pickle.dump(emp_pred, f)
+
+  cv_results = pd.DataFrame(searchcv.cv_results_)
+
+  param_vars = [var for var in cv_results.columns if var.startswith("param_xgbregressor")]
+
+  for var in param_vars:
+      plt.scatter(cv_results[var], cv_results["rank_test_score"])
+      plt.xlabel(var)
+      plt.ylabel("rank_test_score")
+      plt.savefig(output_path + f"ranktest_{var}.png")
+      plt.close()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("emp_path", help="Path to the empirical data file")
+    parser.add_argument("X_train", help="Path to the X_train data file")
+    parser.add_argument("y_train", help="Path to the y_train data file")
+    parser.add_argument("best_pipeline", help="Path to the best_pipeline data file")
+    parser.add_argument("searchcv", help="Path to the searchcv data file")
+    parser.add_argument("prior_ranges", nargs='+', help="List of prior ranges")
+    parser.add_argument("responses", nargs='+', help="List of responses")
+    parser.add_argument("output_path", help="Path to the output directory")
+    args = parser.parse_args()
+    prior_ranges = [list(map(float, range_str.split(','))) for range_str in args.prior_ranges]
+    responses = args.responses
+    main(args.emp_path, args.X_train, args.y_train, args.best_pipeline, args.searchcv, prior_ranges, responses, args.output_path)
+
+```
