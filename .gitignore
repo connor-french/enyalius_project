@@ -101,6 +101,12 @@ analysis/data/vcfs/*
 # analysis output
 analysis/output/*
 
+#vscode debugging files
+analysis/.vscode/*
+
+# ignore manuscript data
+manuscript/data/*
 
 # sandbox for exploring Enyalius data
 enyalius-sandbox.ipynb
+spaceprime-sandbox.ipynb

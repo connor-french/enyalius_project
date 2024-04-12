@@ -15,7 +15,7 @@ rule move_singletons:
   output:
     expand("analysis/data/vcfs/clust92_{species}_{minspcov}_nosingletons.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])
   shell:
-    "mv assembly/full/clust92_outfiles/*nosingletons.vcf analysis/data/vcfs/"
+    "cp assembly/full/clust92_outfiles/*nosingletons.vcf analysis/data/vcfs/"
 
 # make sure I have the localities for genetics individuals who don't have sequencing problems for analysis
 rule move_localities:

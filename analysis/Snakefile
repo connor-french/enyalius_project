@@ -11,6 +11,8 @@ rule all:
     num_sites = expand("output/single_pop_sumstats/num_sites_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"]),
     s_pop_sumstats = "single_pop_sumstats.html",
     construct_matrices = expand("output/construct_matrices/construct_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
+    cat_proj_cropped = "output/sdm_projections/projections_cat_inland-removed.tif"
+    
 
 # calculate single population summary statistics
 ## pi (per-site and per-individual), watterson's theta, tajima's d
@@ -40,7 +42,7 @@ rule plot_single_pop_sumstats:
   params:
     inlong = config["INLONG"]
   output:
-    "single_pop_sumstats.html"
+    "single_pop_sumstats.md"
   shell:
     "quarto render single_pop_sumstats.qmd \
     -P site_pi:'{input.site_pi}' \
@@ -61,3 +63,14 @@ rule vcf_to_construct:
   script:
     "scripts/vcf_to_construct.py"
 
+
+# I need to add SDM here
+
+# crop catenatus projections because of removing the inland individuals
+rule crop_cat_proj:
+  input:
+    "output/sdm_projections/projections_cat.tif"
+  output:
+    "output/sdm_projections/projections_cat_inland-removed.tif"
+  script:
+    "scripts/crop_cat_projections.py"
