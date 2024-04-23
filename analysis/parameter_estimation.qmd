@@ -1,0 +1,254 @@
+---
+title: "Parameter Estimation"
+format: gfm
+execute:
+  message: false
+  warning: false
+editor: visual
+---
+
+## Setup
+
+```{r}
+#| label: load-packages
+
+library(tidymodels)
+tidymodels_prefer()
+library(tidyverse)
+library(here)
+library(doParallel)
+library(probably)
+
+```
+
+## Overview
+
+I'm inferring demographic parameters from the simulations for two reasons:
+
+1.  Learn something about the biology of these species
+2.  Generate posterior distributions for each parameter that I can use to create maps of genetic diversity
+
+I'm using boosted regression trees, implemented in `xgboost`, to create point predictions, followed by [conformal inference](https://en.wikipedia.org/wiki/Conformal_prediction) to construct prediction intervals.
+
+The parameters I'm inferring are `max_k` (the maximum deme size for any particular deme), `Nm` (effective migration), and the ancestral admixture population sizes (prefix `admix_n_a` for each admixture population). These three values vary across simulations and are of biological interest.
+
+## E. iheringii
+
+```{r}
+#| label: set-seed-ihe
+
+# set the seed for each species
+set.seed(1111)
+
+```
+
+### Load and clean data
+
+```{r}
+#| label: load-data-ihe
+
+# read in sumstats
+
+params_paths <- list.files(here("analysis", "output", "simulations", "sims_ihe_linear"), pattern = "params", full.names = TRUE)
+
+sumstats_paths <- list.files(here("analysis", "output", "simulations", "sims_ihe_linear"), pattern = "sumstats", full.names = TRUE)
+
+demo_paths <- list.files(here("analysis", "output", "simulations", "sims_ihe_linear"), pattern = "demo_summary", full.names = TRUE)
+
+
+params <- map_df(params_paths, read_csv)
+
+# only retain sumstats we're going to use
+sumstats <- map_df(sumstats_paths, read_csv) %>% 
+  select(
+    -starts_with("sfs_h3"),
+    -starts_with("pi_pop"),
+    -morans_i
+  )
+
+demo_sum <- map_df(demo_paths, read_csv)
+
+# for whatever reason, the sim id counter didn't iterate, so I need to add better sim IDs
+sims_ihe <- bind_cols(params, sumstats, demo_sum) %>% 
+  rename(
+    param_id = param_id...12,
+    sim_id = sim_id...13
+    ) %>% 
+  mutate(sim_id = str_c(sim_id, row_number()))
+
+### Empirical
+empirical_ihe <- read_csv(here("analysis", "output", "empirical_sumstats", "iheringii_sumstats.csv")) %>% 
+  select(
+    starts_with("pi_a"),
+    starts_with("pi_sd_a"),
+    starts_with("taj"),
+    starts_with("sfs"),
+    starts_with("dxy"),
+    starts_with("ibd"),
+    -contains("fst")
+  ) %>%
+  rename_with(
+    ~str_remove(.x, "dxy_"),
+    starts_with("ibd")
+  )
+
+```
+
+### Modeling
+
+The responses for *E. iheringii* are `max_k`, `Nm`, `admix_n_a1`, `admix_n_a2`.
+
+```{r}
+#| label: responses-ihe
+
+responses <- c("max_k", "Nm", "admix_n_a1", "admix_n_a2")
+
+seeds <- runif(length(responses), 1, 100000)
+
+names(seeds) <- responses
+
+```
+
+#### Max deme size
+
+##### Split into train-test
+
+```{r}
+#| label: train-test-split-ihe-max
+
+set.seed(seeds["max_k"])
+
+split_max <- bind_cols(sims_ihe %>% select(max_k), sumstats) %>% 
+  initial_split(prop = 4/5)
+
+# get train and test and remove ID columns
+train_max <- training(split_max) %>% 
+  select(-sim_id, -param_id)
+
+test_max <- testing(split_max) %>% 
+  select(-sim_id, -param_id)
+```
+
+```{r}
+#| label: model-setup-ihe-max
+
+recipe_max <- 
+  recipe(formula = max_k ~ ., data = train_max) %>% 
+  step_zv(all_predictors()) 
+
+cv_max <- vfold_cv(train_max, v = 5)
+
+spec_max <-
+  boost_tree(
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune(),
+    sample_size = tune()
+  ) %>%
+  set_mode("regression") %>%
+  set_engine("xgboost") 
+
+workflow_max <- 
+  workflow() %>% 
+  add_recipe(recipe_max) %>% 
+  add_model(spec_max) 
+
+param_max <- spec_max %>% 
+  extract_parameter_set_dials()
+
+grid_max <- grid_latin_hypercube(param_max, size = 7)
+
+```
+
+```{r}
+#| label: tune-model-ihe
+#| cache: true
+
+# start up parallel process
+all_cores <- parallel::detectCores(logical = FALSE)
+
+cl <- makeCluster(all_cores, type="FORK")
+registerDoParallel(cl)
+
+# begin model tuning
+start_time <- Sys.time()
+tune_max <-
+  tune_grid(
+    workflow_max, 
+    resamples = cv_max, 
+    grid = grid_max, 
+    metrics = metric_set(rmse, mae, huber_loss_pseudo, rsq),
+    control = control_grid(save_pred = TRUE)
+    )
+
+stopCluster(cl)
+end_time <- Sys.time()
+difftime(end_time, start_time, units = "mins")
+```
+
+```{r}
+tune_met <- tune_max %>% 
+  collect_metrics()
+```
+
+```{r}
+tune_met %>% 
+  filter(.metric == "huber_loss_pseudo" | .metric == "rmse") %>% 
+  group_by(.metric) %>% 
+  arrange(.estimator) %>% 
+  View()
+```
+
+Predict
+
+```{r}
+#| label: predict-train-ihe
+trial_fit <- fit(workflow_max, data = train_max)
+
+```
+
+```{r}
+#| label: predict-test-ihe
+
+set.seed(8666777)
+
+best_max <- select_best(tune_max, metric = "huber_loss_pseudo")
+workflow_final_max <- workflow_max %>% 
+  finalize_workflow(best_max)
+
+last_fit_max <- workflow_final_max %>% 
+  last_fit(split = split_max)
+
+```
+
+
+```{r}
+test_preds <- last_fit_max %>% 
+  collect_predictions()
+
+
+ggplot(test_preds, aes(x = .pred, y = max_k)) +
+  geom_point(alpha = 0.3) +
+  geom_abline(slope = 1, intercept = 0) +
+  geom_smooth(method = "lm", se = FALSE, color = "red")
+```
+
+```{r}
+ggplot(test_preds %>% filter(max_k == 100), aes(x = .pred)) +
+  geom_histogram()
+```
+
+
+
+```{r}
+#| label: predict-empirical-ihe
+
+pred_ihe <- workflow_final_max %>%
+  fit(train_max) %>% 
+  predict(empirical_ihe)
+
+
+pred_ihe
+```
