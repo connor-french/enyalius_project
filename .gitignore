@@ -103,6 +103,7 @@ analysis/output/*
 
 #vscode debugging files
 analysis/.vscode/*
+.vscode/*
 
 # ignore manuscript data
 manuscript/data/*
