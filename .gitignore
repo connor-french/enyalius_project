@@ -108,7 +108,7 @@ analysis/.vscode/*
 # ignore manuscript data
 manuscript/data/*
 # ignore figure files
-#manuscript/figures/
+manuscript/figures/
 # ignore manuscript drafts
 manuscript/drafts/
 # ignore manuscript tables
