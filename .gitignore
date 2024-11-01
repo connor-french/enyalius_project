@@ -107,9 +107,12 @@ analysis/.vscode/*
 
 # ignore manuscript data
 manuscript/data/*
-# ignore illustrator files
-manuscript/figures/*.ai
-manuscript/figures/feature_importance/*.ai
+# ignore figure files
+#manuscript/figures/
+# ignore manuscript drafts
+manuscript/drafts/
+# ignore manuscript tables
+manuscript/tables/
 
 # sandbox for exploring Enyalius data
 enyalius-sandbox.ipynb

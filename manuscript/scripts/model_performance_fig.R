@@ -79,10 +79,10 @@ plot_roc_curve <- function(test_obs, test_pred_prob, species) {
     tpr = roc_obj$sensitivities
   )
   if (species == "ihe") {
-    lincol <- "#7CCE00"
+    lincol <- "#0A5DA2"
     sp_full <-  "E. iheringii"
   } else if (species == "cat") {
-    lincol <-  "#CCA200"
+    lincol <-  "#DE8E07"
     sp_full <- "E. catenatus"
   } else {
     lincol <-  "black"
@@ -126,10 +126,10 @@ plot_confusion_matrix <- function(test_obs, test_pred_bin, species) {
 
   if (species == "ihe") {
     sp_full <-  "E. iheringii"
-    fill_col <- "#7CCE00"
+    fill_col <- "#0A5DA2"
   } else if (species == "cat") {
     sp_full <- "E. catenatus"
-    fill_col <- "#CCA200"
+    fill_col <- "#DE8E07"
   } else {
     sp_full <- "species"
     fill_col <- "darkgreen"
@@ -213,10 +213,10 @@ pred_reg_ihe <- read_model_results_reg("ihe")
 plot_obs_vs_pred <- function(test_obs, test_pred, species, var) {
   if (species == "ihe") {
     sp_full <-  "E. iheringii"
-    fill_col <- "#7CCE00"
+    fill_col <- "#0A5DA2"
   } else if (species == "cat") {
     sp_full <- "E. catenatus"
-    fill_col <- "#CCA200"
+    fill_col <- "#DE8E07"
   } else {
     sp_full <- "E. perditus"
     fill_col <- "#013220"

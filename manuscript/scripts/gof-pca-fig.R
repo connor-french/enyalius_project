@@ -161,15 +161,20 @@ pca_cat <- prcomp(ss_cat$sumstats %>% na.omit() %>% select(-model), center = TRU
 pca_df_cat <- ss_cat$sumstats %>%
   na.omit() %>%
   select(model) %>%
-  bind_cols(pca_cat$x)
+  bind_cols(pca_cat$x) %>%
+  mutate(
+    model = str_to_sentence(model)
+  )
 
 emp_pca <- predict(pca_cat, emp_cat) %>%
   as_tibble()
 
 pca_plot_cat <- ggplot() +
-  geom_point(data = pca_df_cat, aes(x = PC1, y = PC2), color = "gray") +
+  geom_point(data = pca_df_cat, aes(x = PC1, y = PC2, color = model), alpha = 0.5) +
   geom_point(data = emp_pca, aes(x = PC1, y = PC2), color = "red")  +
-  labs(title = "E. catenatus") +
+  scale_color_viridis_d() +
+  labs(title = "E. catenatus",
+       color = "Transformation") +
   theme_bw() +
   theme(
     plot.title = element_text(face = "italic")
@@ -182,22 +187,27 @@ pca_ihe <- prcomp(ss_ihe$sumstats %>% na.omit() %>% select(-model), center = TRU
 pca_df_ihe <- ss_ihe$sumstats %>%
   na.omit() %>%
   select(model) %>%
-  bind_cols(pca_ihe$x)
+  bind_cols(pca_ihe$x) %>%
+  mutate(
+    model = str_to_sentence(model)
+  )
 
 emp_pca <- predict(pca_ihe, emp_ihe) %>%
   as_tibble()
 
 pca_plot_ihe <- ggplot() +
-  geom_point(data = pca_df_ihe, aes(x = PC1, y = PC2), color = "gray") +
+  geom_point(data = pca_df_ihe, aes(x = PC1, y = PC2, color = model), alpha = 0.5) +
   geom_point(data = emp_pca, aes(x = PC1, y = PC2), color = "red")  +
-  labs(title = "E. iheringii") +
+  scale_color_viridis_d() +
+  labs(title = "E. iheringii",
+       color = "Transformation") +
   theme_bw() +
   theme(
     plot.title = element_text(face = "italic")
   )
 
 pca_plot_total <-
-  pca_plot_cat + pca_plot_ihe
+  pca_plot_cat + pca_plot_ihe + patchwork::plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
 ggsave(here("manuscript", "figures", "gof-pca-fig.png"),
        pca_plot_total,

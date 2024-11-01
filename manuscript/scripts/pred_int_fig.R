@@ -56,7 +56,7 @@ plot_pred_int <- function(df, param) {
     ),
     linewidth = 3) +
     geom_point(aes(x = sp_long, y = center, color = sp_long), size = 8) +
-    scale_color_manual(values = c("#CCA200", "#CCA200", "#7CCE00", "#7CCE00")) +
+    scale_color_manual(values = c("#DE8E07", "#DE8E07", "#0A5DA2", "#0A5DA2")) +
     geom_hline(yintercept = df$prior_lower, linetype = "dashed") +
     geom_hline(yintercept = df$prior_upper, linetype = "dashed") +
     geom_label_repel(
@@ -87,10 +87,10 @@ plot_barplot <- function(species, prob_thresh) {
   prob_lin <- 1 - prob_thresh
   if (species == "cat") {
     sp_long <- "E. catenatus"
-    fill_color <- "#CCA200"
+    fill_color <- "#DE8E07"
   } else if (species == "ihe") {
     sp_long <- "E. iheringii"
-    fill_color <- "#7CCE00"
+    fill_color <- "#0A5DA2"
   } else {
     sp_long <- "E. perditus"
     fill_color <- "darkgreen"
@@ -129,7 +129,7 @@ p_ihe <- plot_barplot("ihe", 0.99)
   plot_annotation(
     tag_levels = "A",
     tag_suffix = ")"
-  )
+  ) & theme(plot.tag = element_text(size = 16))
 
 # 3. save plot ------------------------------------------------------------
 

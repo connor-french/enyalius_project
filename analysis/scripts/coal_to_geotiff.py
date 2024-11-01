@@ -25,8 +25,6 @@ folder_path = args.folder
 reference_raster_path = args.refraster
 out_raster_path = args.outraster
 
-# Rest of the code...
-
 # Get a list of all CSV files in the folder
 csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
 

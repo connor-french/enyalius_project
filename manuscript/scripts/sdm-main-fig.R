@@ -12,17 +12,28 @@ library(rnaturalearth)
 
 
 # 2. read in localities ------------------------------------------------------
-## gen_locs prefix indicates localities with sequencing individuals
 ## sdm_locs prefix indicates localities used for SDM, after thinning
+## snmf prefix indicates population assignment from sNMF
 
 gen_locs <- read_csv(here("analysis", "data", "enyalius_locs_genetics.csv"))
 
 ### E. iheringii
-gen_locs_ihe <- gen_locs %>%
-  filter(species == "iheringii") %>%
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
-sdm_locs_ihe <- read_sf(here("analysis", "output", "thinned_localities", "iheringii_thinned.gpkg"))
+#### read in snmf locs
+snmf_ihe <- read_csv(here("analysis", "output", "snmf", "iheringii", "pop_assignment_a10_k2.csv")) %>%
+  filter(!duplicated(id)) %>%
+  select(id, pop = likely_assignment)
+
+#### read in sdm locs
+sdm_locs_ihe <- read_sf(here("analysis", "output", "thinned_localities", "iheringii_thinned.gpkg")) %>%
+  left_join(snmf_ihe, by = c("id_code" = "id")) %>%
+  # one sdm individual was not assigned to a population, but there is a representative individual in the snmf data
+  mutate(
+    pop = if_else(
+      str_detect(id_code, "saop"), "pop_2", pop
+    ),
+    is_seq = if_else(!is.na(pop), "Yes", "No")
+  )
 
 ### E. catenatus
 gen_locs_cat <- gen_locs %>%
@@ -30,6 +41,17 @@ gen_locs_cat <- gen_locs %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
 sdm_locs_cat <- read_sf(here("analysis", "output", "thinned_localities", "catenatus_thinned.gpkg"))
+
+snmf_cat <- read_csv(here("analysis", "output", "snmf", "catenatus", "pop_assignment_a10.csv")) %>%
+  filter(!duplicated(id)) %>%
+  select(id, pop = likely_assignment)
+
+
+sdm_locs_cat <- read_sf(here("analysis", "output", "thinned_localities", "catenatus_thinned.gpkg")) %>%
+  left_join(snmf_cat, by = c("id_code" = "id")) %>%
+  mutate(
+    is_seq = if_else(!is.na(pop), "Yes", "No")
+  )
 
 ### E. perditus
 # gen_locs_per <- gen_locs %>%
@@ -54,13 +76,14 @@ proj_cat_rm <- rast(here("analysis", "output", "sdm_projections", "projections_c
 # 4. make individual plots --------------------------------------------------------
 # present-day climate
 ## raw suitabilities
-plot_sdm <- function(species, sdm, locs, plot_type = "raw", leg_pos = "left") {
+plot_sdm <- function(species, sdm, locs, sp_color, plot_type = "raw", leg_pos = "left") {
 
   if (plot_type == "raw") {
     sdm_plot <- ggplot() +
       geom_spatraster(data = sdm) +
-      geom_sf(data = locs) +
+      geom_sf(data = locs, fill = sp_color, aes(shape = pop), size = 2) +
       scale_fill_whitebox_c("muted") +
+      scale_shape_manual(values = c(24, 21, 22), na.value = 13, guide = "none") +
       labs(title = species, fill = "Suitability") +
       guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
       theme_bw() +
@@ -79,8 +102,9 @@ plot_sdm <- function(species, sdm, locs, plot_type = "raw", leg_pos = "left") {
 
     sdm_plot <- ggplot() +
       geom_spatraster(data = sdm) +
-      geom_sf(data = locs) +
+      geom_sf(data = locs, fill = sp_color, aes(shape = pop), size = 2) +
       scale_fill_whitebox_c("muted") +
+      scale_shape_manual(values = c(24, 21, 22), na.value = 13, guide = "none") +
       labs(title = species) +
       theme_bw() +
       theme(
@@ -102,6 +126,7 @@ raw_ihe <-
     species = "E. iheringii",
     sdm = proj_ihe$y0k,
     locs = sdm_locs_ihe,
+    sp_color = "#0A5DA2",
     leg_pos = "bottom",
     plot_type = "raw"
   )
@@ -111,6 +136,7 @@ raw_cat <-
     species = "E. catenatus",
     sdm = proj_cat_rm$`projections_cat_inland-removed_1`,
     locs = sdm_locs_cat %>% filter(longitude > -40.3),
+    sp_color = "#DE8E07",
     leg_pos = "none",
     plot_type = "raw"
   )
@@ -123,6 +149,7 @@ thresh_ihe <-
     species = "",
     sdm = proj_ihe$y0k,
     locs = sdm_locs_ihe,
+    sp_color = "#0A5DA2",
     plot_type = "thresh",
     leg_pos = "none"
   )
@@ -131,6 +158,7 @@ thresh_cat <- plot_sdm(
   species = "",
   proj_cat_rm$`projections_cat_inland-removed_1`,
   locs = sdm_locs_cat %>% filter(longitude > -40.3),
+  sp_color = "#DE8E07",
   plot_type = "thresh",
   leg_pos = "none"
 )
@@ -169,7 +197,7 @@ plot_range <- function() {
       nudge_x = -18,
       size = 8
     ) +
-    geom_sf(data = range_ihe, fill = "#7CCE00", alpha = 1) +
+    geom_sf(data = range_ihe, fill = "#0A5DA2", alpha = 1) +
     geom_sf_text(
       data = range_ihe,
       aes(label = "italic('E. iheringii')"),
@@ -178,7 +206,7 @@ plot_range <- function() {
       nudge_x = 10,
       size = 5
     ) +
-    geom_sf(data = range_cat, fill = "#CCA200", alpha = 1) +
+    geom_sf(data = range_cat, fill = "#DE8E07", alpha = 1) +
     geom_sf_text(
       data = range_cat,
       aes(label = "italic('E. catenatus')"),

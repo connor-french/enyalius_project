@@ -28,10 +28,10 @@ def main():
 
   if args.species == "cat":
     species_name = "E. catenatus"
-    bar_col = "#CCA200"
+    bar_col = "#DE8E07"
   elif args.species == "ihe":
     species_name = "E. iheringii"
-    bar_col = "#7CCE00"
+    bar_col = "#0A5DA2"
   elif args.species == "per":
     species_name = "E. perditus"
     bar_col = "darkgreen"

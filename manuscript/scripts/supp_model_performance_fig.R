@@ -67,10 +67,10 @@ pred_reg_ihe <- read_model_results_reg("ihe")
 plot_obs_vs_pred <- function(test_obs, test_pred, species, var) {
   if (species == "ihe") {
     sp_full <-  "E. iheringii"
-    fill_col <- "#7CCE00"
+    fill_col <- "#0A5DA2"
   } else if (species == "cat") {
     sp_full <- "E. catenatus"
-    fill_col <- "#CCA200"
+    fill_col <- "#DE8E07"
   } else {
     sp_full <- "E. perditus"
     fill_col <- "#013220"
