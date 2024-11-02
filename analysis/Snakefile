@@ -54,15 +54,6 @@ rule plot_single_pop_sumstats:
     -P inlong:'{params.inlong}' \
     -P ind_lists:'{input.ind_lists}'"
 
-# create allele frequency matrices for conStruct analysis
-rule vcf_to_construct:
-  input:
-    expand("data/vcfs/clust92_{species}_{minspcov}_nosingletons.vcf", species = config["INLONG"], minspcov = config["MINSPCOV"])
-  output:
-    expand("output/construct_matrices/construct_{species}_{minspcov}.txt", species = config["INLONG"], minspcov = config["MINSPCOV"])
-  script:
-    "scripts/vcf_to_construct.py"
-
 
 # I need to add SDM here
 

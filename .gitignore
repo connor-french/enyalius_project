@@ -61,7 +61,7 @@ archive/*
 analysis/slim/*
 
 # adhoc R scripts used for things like conference presentations or lab meetings
-R/adhoc/*
+R/*
 
 # My lab notebook
 lab_notebook*

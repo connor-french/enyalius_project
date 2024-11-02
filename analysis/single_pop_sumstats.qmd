@@ -3,6 +3,7 @@ title: "Single population summary statistics"
 format: 
   html:
     code-fold: true
+    keep-md: true
 params:
   site_pi: ""
   ind_pi: ""
@@ -46,8 +47,6 @@ site_pi <- map(site_pi_paths, \(x) read_table(x, col_names = "pi", na = "nan")) 
   bind_rows(.id = "dataset") %>% 
   mutate(species = case_when(
     str_detect(dataset, "catenatus") ~ "catenatus",
-    str_detect(dataset, "pictus") ~ "pictus",
-    str_detect(dataset, "perditus") ~ "perditus",
     str_detect(dataset, "iheringii") ~ "iheringii"
   )) 
 
@@ -63,8 +62,6 @@ wat_theta <- map(wat_theta_paths, \(x) read_table(x, col_names = "theta", na = "
   bind_rows(.id = "dataset") %>% 
   mutate(species = case_when(
     str_detect(dataset, "catenatus") ~ "catenatus",
-    str_detect(dataset, "pictus") ~ "pictus",
-    str_detect(dataset, "perditus") ~ "perditus",
     str_detect(dataset, "iheringii") ~ "iheringii"
   )) 
 
@@ -76,8 +73,6 @@ taj_d <- map(taj_d_paths, \(x) read_table(x, col_names = "d", na = "nan")) %>%
   bind_rows(.id = "dataset") %>% 
   mutate(species = case_when(
     str_detect(dataset, "catenatus") ~ "catenatus",
-    str_detect(dataset, "pictus") ~ "pictus",
-    str_detect(dataset, "perditus") ~ "perditus",
     str_detect(dataset, "iheringii") ~ "iheringii"
   )) 
 
@@ -89,8 +84,6 @@ sfs <- map(sfs_paths, \(x) read_table(x, col_names = "count", na = "nan")) %>%
   bind_rows(.id = "dataset") %>% 
   mutate(species = case_when(
     str_detect(dataset, "catenatus") ~ "catenatus",
-    str_detect(dataset, "pictus") ~ "pictus",
-    str_detect(dataset, "perditus") ~ "perditus",
     str_detect(dataset, "iheringii") ~ "iheringii"
   )) %>% 
   # group by dataset and rank according to sfs
@@ -107,8 +100,6 @@ num_sites <- map(num_sites_paths, \(x) read_table(x, col_names = "num_sites", na
   bind_rows(.id = "dataset") %>% 
   mutate(species = case_when(
     str_detect(dataset, "catenatus") ~ "catenatus",
-    str_detect(dataset, "pictus") ~ "pictus",
-    str_detect(dataset, "perditus") ~ "perditus",
     str_detect(dataset, "iheringii") ~ "iheringii"
   ))
 
@@ -119,6 +110,7 @@ num_sites <- map(num_sites_paths, \(x) read_table(x, col_names = "num_sites", na
 ## E. catenatus
 
 ### number of sites
+
 ```{r}
 #| label: cat-numsites
 cat_num_sites <- num_sites %>% 
@@ -130,7 +122,6 @@ ggplot(cat_num_sites, aes(x = dataset, y = num_sites)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-
 
 ### per-site pi
 
@@ -228,234 +219,10 @@ ggplot(cat_sfs, aes(x = rank, y = count, color = dataset)) +
   theme_bw() 
 ```
 
-
-## E. pictus
-
-### number of sites
-```{r}
-#| label: pic-numsites
-pic_num_sites <- num_sites %>% 
-  filter(species == "pictus")
-
-ggplot(pic_num_sites, aes(x = dataset, y = num_sites)) +
-  geom_col() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
-
-### per-site pi
-
-```{r}
-#| label: pic-site-pi
-#| layout-ncol: 1
-
-pic_site_pi <- site_pi %>% 
-  filter(species == "pictus")
-
-ggplot(pic_site_pi, aes(x = pi, color = dataset)) + 
-  geom_density() +
-  scale_color_viridis_d() + 
-  theme_bw()
-```
-
-### per-ind pi
-
-```{r}
-#| label: pic-ind-pi
-#| layout-ncol: 2
-
-pic_ind_names <- names(ind_lists) %>% 
-  str_detect("pictus") %>% 
-  keep(ind_lists, .) %>% 
-  pluck(1)
-
-
-pic_ind_pi <- names(ind_pi) %>% 
-  str_detect("pictus") %>% 
-  keep(ind_pi, .)
-
-for (i in 1:length(pic_ind_pi)){
-  rownames(pic_ind_pi[[i]]) <- pic_ind_names
-  colnames(pic_ind_pi[[i]]) <- pic_ind_names
-  heatmap(pic_ind_pi[[i]], main = names(pic_ind_pi)[i])
-}
-
-```
-
-### Watterson's theta
-
-```{r}
-#| label: pic-wat-theta
-#| layout-ncol: 1
-
-pic_wat_theta <- wat_theta %>% 
-  filter(species == "pictus")
-
-ggplot(pic_wat_theta, aes(x = theta, color = dataset)) + 
-  geom_density() +
-  scale_color_viridis_d() + 
-  theme_bw()
-
-ggplot(pic_wat_theta, aes(x = theta, y = dataset)) +
-  geom_boxplot() +
-  theme_bw()
-```
-
-### Tajima's D
-
-```{r}
-#| label: pic-taj-d
-#| layout-ncol: 1
-#| warning: false
-#| message: false
-
-pic_taj_d <- taj_d %>% 
-  filter(species == "pictus")
-
-ggplot(pic_taj_d, aes(x = d, color = dataset)) + 
-  geom_density() +
-  scale_color_viridis_d() + 
-  theme_bw()
-
-ggplot(pic_taj_d, aes(x = d, y = dataset)) +
-  geom_boxplot() +
-  theme_bw()
-```
-
-### SFS
-
-```{r}
-#| label: pic-sfs
-#| layout-ncol: 1
-#| warning: false
-#| message: false
-
-pic_sfs <- sfs %>% 
-  filter(species == "pictus")
-
-ggplot(pic_sfs, aes(x = rank, y = count, color = dataset)) +
-  geom_line() +
-  scale_color_viridis_d() +
-  theme_bw() 
-```
-
-
-## E. perditus
-
-### number of sites
-```{r}
-#| label: per-numsites
-per_num_sites <- num_sites %>% 
-  filter(species == "perditus")
-
-ggplot(per_num_sites, aes(x = dataset, y = num_sites)) +
-  geom_col() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
-
-### per-site pi
-
-```{r}
-#| label: per-site-pi
-#| layout-ncol: 1
-
-per_site_pi <- site_pi %>% 
-  filter(species == "perditus")
-
-ggplot(per_site_pi, aes(x = pi, color = dataset)) + 
-  geom_density() +
-  scale_color_viridis_d() + 
-  theme_bw()
-```
-
-### per-ind pi
-
-```{r}
-#| label: per-ind-pi
-#| layout-ncol: 2
-
-per_ind_names <- names(ind_lists) %>% 
-  str_detect("perditus") %>% 
-  keep(ind_lists, .) %>% 
-  pluck(1)
-
-
-per_ind_pi <- names(ind_pi) %>% 
-  str_detect("perditus") %>% 
-  keep(ind_pi, .)
-
-for (i in 1:length(per_ind_pi)){
-  rownames(per_ind_pi[[i]]) <- per_ind_names
-  colnames(per_ind_pi[[i]]) <- per_ind_names
-  heatmap(per_ind_pi[[i]], main = names(per_ind_pi)[i])
-}
-
-```
-
-### Watterson's theta
-
-```{r}
-#| label: per-wat-theta
-#| layout-ncol: 1
-
-per_wat_theta <- wat_theta %>% 
-  filter(species == "perditus")
-
-ggplot(per_wat_theta, aes(x = theta, color = dataset)) + 
-  geom_density() +
-  scale_color_viridis_d() + 
-  theme_bw()
-
-ggplot(per_wat_theta, aes(x = theta, y = dataset)) +
-  geom_boxplot() +
-  theme_bw()
-```
-
-### Tajima's D
-
-```{r}
-#| label: per-taj-d
-#| layout-ncol: 1
-#| warning: false
-#| message: false
-
-per_taj_d <- taj_d %>% 
-  filter(species == "perditus")
-
-ggplot(per_taj_d, aes(x = d, color = dataset)) + 
-  geom_density() +
-  scale_color_viridis_d() + 
-  theme_bw()
-
-ggplot(per_taj_d, aes(x = d, y = dataset)) +
-  geom_boxplot() +
-  theme_bw()
-```
-
-### SFS
-
-```{r}
-#| label: per-sfs
-#| layout-ncol: 1
-#| warning: false
-#| message: false
-
-per_sfs <- sfs %>% 
-  filter(species == "perditus")
-
-ggplot(per_sfs, aes(x = rank, y = count, color = dataset)) +
-  geom_line() +
-  scale_color_viridis_d() +
-  theme_bw() 
-```
-
-
 ## E. iheringii
 
 ### number of sites
+
 ```{r}
 #| label: ihe-numsites
 ihe_num_sites <- num_sites %>% 
@@ -563,7 +330,5 @@ ggplot(ihe_sfs, aes(x = rank, y = count, color = dataset)) +
   scale_color_viridis_d() +
   theme_bw() 
 ```
-
-
 
 :::

@@ -1,26 +1,20 @@
----
-title: "Species Distribution Modeling"
-format: gfm
-editor: visual
-knitr:
-  opts_chunk:
-    warning: false
-    message: false
-    eval: false
----
+# Species Distribution Modeling
 
-I modeledthe distributions of the two *Enyalius* study species (*E. catenatus* and *E. iheringii*) to understand their current distributions and responses to long-term historical climate change.
 
-I built robust models of their current distributions using CHELSA bioclims with the objective to project those models to climate time slices back to 21 kya.
+I modeledthe distributions of the two *Enyalius* study species (*E.
+catenatus* and *E. iheringii*) to understand their current distributions
+and responses to long-term historical climate change.
 
-***Note***
-The SDMs run using the Maxent binary, which requires Java and the `rJava` package. Using `rJava` on M-series Apple Macs can be problematic. I recommend using an older Mac, Windows or Linux machine for running the SDMs.  
+I built robust models of their current distributions using CHELSA
+bioclims with the objective to project those models to climate time
+slices back to 21 kya.
 
-```{r}
-#| label: setup
-#| message: false
-#| warning: false
+***Note*** The SDMs run using the Maxent binary, which requires Java and
+the `rJava` package. Using `rJava` on M-series Apple Macs can be
+problematic. I recommend using an older Mac, Windows or Linux machine
+for running the SDMs.
 
+``` r
 library(sf)
 library(spThin)
 library(janitor)
@@ -37,31 +31,44 @@ library(usdm)
 
 ## Variable selection
 
-I'm choosing variables that encompass the range of the *Enyalius* species, are relevant to their physiology, and are obtainable at a reasonable spatial resolution.
+I’m choosing variables that encompass the range of the *Enyalius*
+species, are relevant to their physiology, and are obtainable at a
+reasonable spatial resolution.
 
 Bioclims:  
-Using the CHELSA bioclim dataset downloaded from Karger DN, Conrad O, Böhner J, Kawohl T, Kreft H, Soria-Auza RW, Zimmermann NE, Linder HP, Kessler M. 2017. Climatologies at high resolution for the earth’s land surface areas. Scientific Data 4:170122. Downloaded on **2023-11-25**.  
+Using the CHELSA bioclim dataset downloaded from Karger DN, Conrad O,
+Böhner J, Kawohl T, Kreft H, Soria-Auza RW, Zimmermann NE, Linder HP,
+Kessler M. 2017. Climatologies at high resolution for the earth’s land
+surface areas. Scientific Data 4:170122. Downloaded on **2023-11-25**.  
 1 km resolution.
 
-For projecting to past climates, I'm using [CHELSA TraCE21k v1.0 Bioclims](https://cp.copernicus.org/preprints/cp-2021-30/cp-2021-30.pdf) at 100-year intervals back to the LGM. 1 km resolution.
+For projecting to past climates, I’m using [CHELSA TraCE21k v1.0
+Bioclims](https://cp.copernicus.org/preprints/cp-2021-30/cp-2021-30.pdf)
+at 100-year intervals back to the LGM. 1 km resolution.
 
-Karger, D.N., Nobis, M.P., Normand, S., Graham, C.H., Zimmermann, N. (2023) CHELSA-TraCE21k -- High resolution (1 km) downscaled transient temperature and precipitation data since the Last Glacial Maximum. ***Climate of the Past.*** <https://doi.org/10.5194/cp-2021-30>. Downloaded on **2023-11-25.**
+Karger, D.N., Nobis, M.P., Normand, S., Graham, C.H., Zimmermann, N.
+(2023) CHELSA-TraCE21k – High resolution (1 km) downscaled transient
+temperature and precipitation data since the Last Glacial Maximum.
+***Climate of the Past.*** <https://doi.org/10.5194/cp-2021-30>.
+Downloaded on **2023-11-25.**
 
 Land Cover:  
-Using biome projections from [Costa et al. 2018](https://onlinelibrary-wiley-com.ezproxy.gc.cuny.edu/doi/full/10.1111/geb.12694) at 1000-year intervals back to the LGM. 5 km resolution that I'm downscaling with nearest-neighbor resampling. Downloaded on **2023-06-08**.
+Using biome projections from [Costa et
+al. 2018](https://onlinelibrary-wiley-com.ezproxy.gc.cuny.edu/doi/full/10.1111/geb.12694)
+at 1000-year intervals back to the LGM. 5 km resolution that I’m
+downscaling with nearest-neighbor resampling. Downloaded on
+**2023-06-08**.
 
 ## Variable processing
 
-I'm cropping the variables to a relevant extent before going further with the individual SDMs. I'm cropping them with a 1 degree buffer around the entire species group's range.
+I’m cropping the variables to a relevant extent before going further
+with the individual SDMs. I’m cropping them with a 1 degree buffer
+around the entire species group’s range.
 
-First, I'm reading in the localities and plotting them to make sure there isn't anything wild. Everything looks reasonable!
+First, I’m reading in the localities and plotting them to make sure
+there isn’t anything wild. Everything looks reasonable!
 
-```{r}
-#| label: locs
-#| message: false
-#| eval: false
-  
-  
+``` r
 # read in as a data frame first
 locs_df <- read_csv(here("analysis", "data", "enyalius_locs.csv")) %>% 
   # the variable names are messy
@@ -95,11 +102,7 @@ ggplot() +
 
 Creating a convex hull with an 2 degree buffer.
 
-```{r}
-#| label: mcp-all
-#| warning: false
-#| eval: false
-
+``` r
 mcp_all <- st_convex_hull(st_union(locs_sf)) %>%
   st_buffer(dist = units::set_units(2, degree)) %>% 
   terra::vect()
@@ -109,13 +112,13 @@ plot(mcp_all, add=TRUE)
 plot(locs_vec, add=TRUE)
 ```
 
-Read in bioclims. Originally I waited to crop, but I folded that into the initial variable downloads. The rasters going into `cropped_predictors` are the same as I'm reading in, just with different names. They're also being written as a single file, rather than multiple files.
+Read in bioclims. Originally I waited to crop, but I folded that into
+the initial variable downloads. The rasters going into
+`cropped_predictors` are the same as I’m reading in, just with different
+names. They’re also being written as a single file, rather than multiple
+files.
 
-```{r}
-#| label: crop-env
-#| warning: false
-#| eval: false
-
+``` r
 bioclims <- terra::rast(list.files(here("analysis", "data", "current_climate_chelsa"), full.names = TRUE))
 
 # get the only the bioclim labels
@@ -129,43 +132,45 @@ plot(locs_vec, add=TRUE)
 
 Write the cropped climate layers to file for use in the SDMs.
 
-```{r}
-#| label: write-cropped
-#| warning: false
-#| eval: false
-
+``` r
 terra::writeRaster(bioclims, here("analysis", "output", "cropped_predictors", "bioclims.tif"))
 ```
 
-## General SDM steps {.tabset}
+## General SDM steps
 
-For each SDM, I'm going to perform the following steps:  
+For each SDM, I’m going to perform the following steps:
 
-- spatially thin localities  
-    - 20 km buffer to reduce spatial autocorrelation  
-- crop the new predictors according to a minimum convex hull of the localities for each species with a 0.5 degree buffer  
-    - I tried point-buffers, but they resulted in worse models  
-- extract background environmental data (10,000 points) for predictor correlation and modeling  
+- spatially thin localities
+  - 20 km buffer to reduce spatial autocorrelation  
+- crop the new predictors according to a minimum convex hull of the
+  localities for each species with a 0.5 degree buffer
+  - I tried point-buffers, but they resulted in worse models  
+- extract background environmental data (10,000 points) for predictor
+  correlation and modeling  
 - correlate predictors  
-- remove predictors w/ r > 0.75, prioritizing ecologically relevant variables  
-- Use Maxent for modeling  
-    - LQH feature classes to keep models relatively simple   
-    - regularization multipliers from 0.5 to 5.0 in 0.5 increments to test a wide range of regularization. 
-    - leave-one-out cross validation for model selection due to a low number of localities  
-    - select models first by AICc (model fit), followed by ommission error rate (prediction)  
+- remove predictors w/ r \> 0.75, prioritizing ecologically relevant
+  variables  
+- Use Maxent for modeling
+  - LQH feature classes to keep models relatively simple  
+  - regularization multipliers from 0.5 to 5.0 in 0.5 increments to test
+    a wide range of regularization.
+  - leave-one-out cross validation for model selection due to a low
+    number of localities  
+  - select models first by AICc (model fit), followed by ommission error
+    rate (prediction)
 
-
-In addition, I'm reading/writing data for each species in isolation, so the code for one species isn't dependent on that for another, or for what I did during variable processing.
+In addition, I’m reading/writing data for each species in isolation, so
+the code for one species isn’t dependent on that for another, or for
+what I did during variable processing.
 
 ### E. catenatus
 
-Note: putative "catenatus 2" species from Mariana's phylogenetic work have been removed.
+Note: putative “catenatus 2” species from Mariana’s phylogenetic work
+have been removed.
 
 Reading in data for plotting.
 
-```{r}
-#| label: read-af
-
+``` r
 # atlantic forest shapefile
 af <- read_sf(here("analysis", "data", "atlantic_forest", "atlantic_forest.geojson"))
 ```
@@ -174,9 +179,7 @@ af <- read_sf(here("analysis", "data", "atlantic_forest", "atlantic_forest.geojs
 
 Read and filter localities.
 
-```{r}
-#| label: locs-cat
-
+``` r
 locs_cat <- read_csv(here("analysis", "data", "enyalius_locs.csv")) %>% 
   # the variable names are messy
   janitor::clean_names() %>%
@@ -202,11 +205,10 @@ plot(st_geometry(af))
 plot(st_geometry(locs_cat), add = TRUE)
 ```
 
-Spatial thin. I'm using a 20 km buffer to reduce the impact of spatial autocorrelation.
+Spatial thin. I’m using a 20 km buffer to reduce the impact of spatial
+autocorrelation.
 
-```{r}
-#| label: spthin-cat
-
+``` r
 set.seed(394833)
 
 #run spthin algorithm. This returns 100 possible combinations of removed localities
@@ -243,10 +245,7 @@ plot(st_geometry(locs_cat), add=TRUE)
 
 Write thinned localities to file
 
-```{r, eval=FALSE}
-#| label: write-spthin-cat
-#| eval: false
-
+``` r
 # Write to file
 st_write(locs_cat, here("analysis", "output", "thinned_localities", "catenatus_thinned.gpkg"))
 ```
@@ -255,19 +254,13 @@ st_write(locs_cat, here("analysis", "output", "thinned_localities", "catenatus_t
 
 First, I need to read in the environmental data.
 
-```{r}
-#| label: read-envt-cat
-
+``` r
 bioclims <- terra::rast(here("analysis", "output", "cropped_predictors", "bioclims.tif"))
 ```
 
 Cropping and combining variables for analysis.
 
-```{r}
-#| label: crop-cat
-#| layout-ncol: 2
-#| warning: FALSE
-
+``` r
 # for projection
 mcp_cat <- st_convex_hull(st_union(locs_cat)) %>%
   st_buffer(dist = units::set_units(0.5, degree)) %>% 
@@ -287,8 +280,7 @@ plot(locs_cat, add=TRUE)
 
 Sample 10000 background points. Only returned 2355 points.
 
-```{r}
-#| label: bg-cat
+``` r
 set.seed(1988888)
 
 # for variable correlations
@@ -302,10 +294,10 @@ bg_envt_cat <- terra::spatSample(predictors_cat, 10000,
 bg_coords_cat <- bg_envt_cat[,c("x", "y")]
 ```
 
-Next, I'll extract the values for the background points and perform variance inflation factor stepwise selection with a VIF threshold of 10.
+Next, I’ll extract the values for the background points and perform
+variance inflation factor stepwise selection with a VIF threshold of 10.
 
-```{r}
-#| label: vif-cat
+``` r
 # extract values
 bg_corr_cat <- bg_envt_cat %>% select(-x, -y)
 
@@ -314,7 +306,7 @@ usdm::vifstep(bg_corr_cat, th=10)
 
 The final variable list: BIO3, BIO4, BIO8, BIO13, BIO15, BIO18
 
-```{r}
+``` r
 # label: pred-cat
 
 predictors_cat <- predictors_cat[[c("bio3", "bio4", "bio8", "bio13", "bio15", "bio18")]]
@@ -322,10 +314,13 @@ predictors_cat <- predictors_cat[[c("bio3", "bio4", "bio8", "bio13", "bio15", "b
 
 #### Maxent model
 
-I'm using a jackknifing model evaluation approach since I only have 26 observations and a previous attempt for spatial CV led to wonky evaluation metrics. Additionally, spatial CV can lead to worse predictions than non-spatial CV: [Wadoux et al. 2021](https://www-sciencedirect-com.ezproxy.gc.cuny.edu/science/article/pii/S0304380021002489).
+I’m using a jackknifing model evaluation approach since I only have 26
+observations and a previous attempt for spatial CV led to wonky
+evaluation metrics. Additionally, spatial CV can lead to worse
+predictions than non-spatial CV: [Wadoux et
+al. 2021](https://www-sciencedirect-com.ezproxy.gc.cuny.edu/science/article/pii/S0304380021002489).
 
-```{r}
-#| label: folds-cat
+``` r
 set.seed(7990777)
 coords_cat <- st_coordinates(locs_cat)
 colnames(coords_cat) <- c("x", "y")
@@ -336,10 +331,7 @@ folds_cat <- ENMeval::get.jackknife(occ = coords_cat,
 
 Run the model. Predictions are clamped to prevent extrapolation.
 
-```{r}
-#| label: run-model-cat
-#| eval: false
-
+``` r
 set.seed(34622)
 
 # the vector of regularization multipliers to test
@@ -369,27 +361,16 @@ sdm_cat <-
   )
 ```
 
-```{r}
-#| label: write-cat-model
-#| eval: false
-
+``` r
 # write the model to file
 write_rds(sdm_cat, here("analysis", "output", "sdm_models", "sdm_catenatus.rds"))
 ```
 
-```{r}
-#| label: read-cat-model
-#| echo: false
-
-sdm_cat <- read_rds(here("analysis", "output", "sdm_models", "sdm_catenatus.rds"))
-```
-
 ##### Model evaluation
 
-Let's take a look at the model results.
+Let’s take a look at the model results.
 
-```{r}
-#| label: mod-results-cat
+``` r
 eval_table_cat <- sdm_cat@results
 eval_mods_cat <- sdm_cat@models
 
@@ -397,10 +378,10 @@ names(eval_mods_cat) <-
   str_replace_all(names(eval_mods_cat), "\\.", "\\_")
 ```
 
-Select the final model. First I'm looking at plots of model evaluation stats to get an idea of the spread of stats.
+Select the final model. First I’m looking at plots of model evaluation
+stats to get an idea of the spread of stats.
 
-```{r, warning=FALSE}
-#| label: eval-met-cat
+``` r
 daic_cat <- ggplot(data = eval_table_cat, aes(x = rm, y = delta.AICc, color = fc)) +
   geom_point() +
   scale_color_viridis_d() +
@@ -419,11 +400,11 @@ dauc_cat <- ggplot(data = eval_table_cat, aes(x = rm, y = auc.diff.avg, color = 
 (daic_cat + or_cat) / (dauc_cat)
 ```
 
-Now I'm going to take a look at tables of delta AICc, omission rate, and AUC to see how close the models are. The model with the lowest AICc has a regularization multiplier of 1 and L feature class.
+Now I’m going to take a look at tables of delta AICc, omission rate, and
+AUC to see how close the models are. The model with the lowest AICc has
+a regularization multiplier of 1 and L feature class.
 
-```{r}
-#| label: eval-table-cat
-
+``` r
 eval_table_cat %>% 
   select(delta.AICc, AICc, or.10p.avg, or.mtp.avg, auc.diff.avg, auc.val.avg, rm, fc) %>%
   arrange(delta.AICc) %>% 
@@ -433,20 +414,19 @@ eval_table_cat %>%
 
 Select model.
 
-```{r}
-#| label: select-model-cat
+``` r
 mod_cat <- eval_mods_cat$rm_0_5_fc_L
 opt_seq_tune_cat <- "rm.0.5_fc.L"
 ```
 
-Plot the variable contributions and response curves. The most important variables are bio15, bio18, and bio13. All precipitation!
+Plot the variable contributions and response curves. The most important
+variables are bio15, bio18, and bio13. All precipitation!
 
-```{r}
-#| label: var-importance-cat
+``` r
 plot(mod_cat)
 ```
 
-```{r, eval=FALSE}
+``` r
 png("variable_contribution_catenatus.png")
 plot(mod_cat)
 dev.off()
@@ -455,14 +435,15 @@ file.copy(here("variable_contribution_catenatus.png"), here("analysis", "output"
 file.remove(here("variable_contribution_catenatus.png"))
 ```
 
-Suitability increases with precipitation amount of the wettest month, decreases with precipitation seasonality, and increases with mean monthly precipitation of the warmest quarter.
+Suitability increases with precipitation amount of the wettest month,
+decreases with precipitation seasonality, and increases with mean
+monthly precipitation of the warmest quarter.
 
-```{r}
-#| label: resp-curve-cat
+``` r
 dismo::response(mod_cat)
 ```
 
-```{r, eval=FALSE}
+``` r
 png("response_curves_catenatus.png")
 dismo::response(mod_cat)
 dev.off()
@@ -473,18 +454,16 @@ file.remove(here("response_curves_catenatus.png"))
 
 ##### Project
 
-I'm projecting the model to the study area extent.
+I’m projecting the model to the study area extent.
 
-```{r}
-#| label: proj-cur-cat
+``` r
 pred_cat <- ENMeval::eval.predictions(sdm_cat)[[opt_seq_tune_cat]]
 plot(pred_cat)
 plot(st_geometry(af), add = TRUE)
 plot(st_geometry(locs_cat), pch = 21, bg = alpha("lightgray", 0.5), add = TRUE)
 ```
 
-```{r}
-#| label: proj-cur-cat-thresh
+``` r
 pred_cat_thresh <- pred_cat$rm.0.5_fc.L
 # observed suitabilities
 obs_suit_cat <- terra::extract(pred_cat$rm.0.5_fc.L, locs_cat)
@@ -503,7 +482,7 @@ plot(st_geometry(locs_cat), pch = 21, bg = alpha("lightgray", 0.5), add = TRUE)
 
 Reading in data for plotting.
 
-```{r}
+``` r
 # atlantic forest shapefile
 af <- read_sf(here("analysis", "data", "atlantic_forest", "atlantic_forest.geojson"))
 ```
@@ -512,7 +491,7 @@ af <- read_sf(here("analysis", "data", "atlantic_forest", "atlantic_forest.geojs
 
 Read and filter localities.
 
-```{r}
+``` r
 locs_ihe <- read_csv(here("analysis", "data", "enyalius_locs.csv")) %>% 
   # the variable names are messy
   janitor::clean_names() %>%
@@ -549,9 +528,9 @@ plot(st_geometry(af))
 plot(st_geometry(locs_ihe), add = TRUE)
 ```
 
-Spatial thin. I'm using a 20 km buffer
+Spatial thin. I’m using a 20 km buffer
 
-```{r}
+``` r
 set.seed(2333)
 
 #run spthin algorithm. This returns 100 possible combinations of removed localities
@@ -588,7 +567,7 @@ plot(st_geometry(locs_ihe), add=TRUE)
 
 Write thinned localities to file
 
-```{r, eval=FALSE}
+``` r
 # Write to file
 st_write(locs_ihe, here("analysis", "output", "thinned_localities", "iheringii_thinned.gpkg"),
          delete_dsn = TRUE)
@@ -598,13 +577,14 @@ st_write(locs_ihe, here("analysis", "output", "thinned_localities", "iheringii_t
 
 First, I need to read in the environmental data.
 
-```{r}
+``` r
 bioclims <- terra::rast(here("analysis", "output", "cropped_predictors", "bioclims.tif"))
 ```
 
-Cropping and combining variables for analysis. Cropping to 0.5 degree buffer to accomodate reasonable dispersal
+Cropping and combining variables for analysis. Cropping to 0.5 degree
+buffer to accomodate reasonable dispersal
 
-```{r, warning=FALSE, message=FALSE}
+``` r
 mcp_ihe <- st_convex_hull(st_union(locs_ihe)) %>%
   st_buffer(dist = units::set_units(0.5, degree)) %>% 
   terra::vect()
@@ -624,7 +604,7 @@ predictors_ihe <- c(bioclims_ihe)
 
 Sample 10000 background points. Only 6515 were able to be sampled.
 
-```{r}
+``` r
 set.seed(7488)
 
 # for variable correlations
@@ -638,10 +618,10 @@ bg_envt_ihe <- terra::spatSample(predictors_ihe, 10000,
 bg_coords_ihe <- bg_envt_ihe[,c("x", "y")]
 ```
 
-Next, I'll extract the values for the background points and perform variance inflation factor stepwise selection with a VIF threshold of 10.
+Next, I’ll extract the values for the background points and perform
+variance inflation factor stepwise selection with a VIF threshold of 10.
 
-```{r}
-#| label: vif-ihe
+``` r
 # extract values
 bg_corr_ihe <- bg_envt_ihe %>% select(-x, -y)
 
@@ -650,15 +630,16 @@ usdm::vifstep(bg_corr_ihe, th=10)
 
 The final variable list: BIO3, BIO7, BIO8, BIO9, BIO14, BIO18
 
-```{r}
+``` r
 predictors_ihe <- predictors_ihe[[c("bio3", "bio7", "bio8", "bio9", "bio14", "bio18")]]
 ```
 
 #### Maxent model
 
-I'm using a jackknife model evaluation approach since I only have 26 observations.
+I’m using a jackknife model evaluation approach since I only have 26
+observations.
 
-```{r}
+``` r
 set.seed(3398737)
 coords_ihe <- st_coordinates(locs_ihe)
 colnames(coords_ihe) <- c("x", "y")
@@ -669,7 +650,7 @@ folds_ihe <- ENMeval::get.jackknife(occ = coords_ihe,
 
 Run the model. Predictions are clamped to prevent extrapolation.
 
-```{r, eval=FALSE}
+``` r
 set.seed(19999923)
 
 # the vector of regularization multipliers to test
@@ -700,20 +681,16 @@ sdm_ihe <-
   )
 ```
 
-```{r, eval=FALSE}
+``` r
 # write the model to file
 write_rds(sdm_ihe, here("analysis", "output", "sdm_models", "sdm_iheringii.rds"))
 ```
 
-```{r, echo=FALSE}
-sdm_ihe <- read_rds(here("analysis", "output", "sdm_models", "sdm_iheringii.rds"))
-```
-
 ##### Model evaluation
 
-Let's take a look at the model results.
+Let’s take a look at the model results.
 
-```{r}
+``` r
 eval_table_ihe <- sdm_ihe@results
 eval_mods_ihe <- sdm_ihe@models
 
@@ -721,9 +698,10 @@ names(eval_mods_ihe) <-
   str_replace_all(names(eval_mods_ihe), "\\.", "\\_")
 ```
 
-Select the final model. First I'm looking at plots of model evaluation stats to get an idea of the spread of stats.
+Select the final model. First I’m looking at plots of model evaluation
+stats to get an idea of the spread of stats.
 
-```{r}
+``` r
 daic_ihe <- ggplot(data = eval_table_ihe, aes(x = rm, y = delta.AICc, color = fc)) +
   geom_point() +
   scale_color_viridis_d() +
@@ -742,9 +720,15 @@ dauc_ihe <- ggplot(data = eval_table_ihe, aes(x = rm, y = auc.diff.avg, color = 
 (daic_ihe + or_ihe) / (dauc_ihe)
 ```
 
-Now I'm going to take a look at tables of delta AICc, omission rate, and AUC to see how close the models are. All of the top models have the same omission rate, similar AUC, and are either LQ or L. I chose the simplest model within 2 AICc of the top model, which was the rm 2.5 and linear feature class model. The top was a rm 2.5 linear quadratic, but even marginally simpler is better within reasonable limits. After skimming through them, they are all very similar models.
+Now I’m going to take a look at tables of delta AICc, omission rate, and
+AUC to see how close the models are. All of the top models have the same
+omission rate, similar AUC, and are either LQ or L. I chose the simplest
+model within 2 AICc of the top model, which was the rm 2.5 and linear
+feature class model. The top was a rm 2.5 linear quadratic, but even
+marginally simpler is better within reasonable limits. After skimming
+through them, they are all very similar models.
 
-```{r}
+``` r
 eval_table_ihe %>% 
   select(delta.AICc, AICc, or.10p.avg, or.mtp.avg, auc.diff.avg, auc.val.avg, rm, fc) %>%
   arrange(delta.AICc) %>% 
@@ -754,19 +738,18 @@ eval_table_ihe %>%
 
 Select model.
 
-```{r}
+``` r
 mod_ihe <- eval_mods_ihe$rm_2_fc_LQ
 opt_seq_tune_ihe <- eval_table_ihe$tune.args[eval_table_ihe$tune.args == "rm.2_fc.LQ"]
 ```
 
 Variable importance.
 
-```{r}
-#| label: var-importance-ihe
+``` r
 plot(mod_ihe)
 ```
 
-```{r, eval=FALSE}
+``` r
 png("variable_contribution_iheringii.png")
 plot(mod_ihe)
 dev.off()
@@ -775,14 +758,14 @@ file.copy(here("variable_contribution_iheringii.png"), here("analysis", "output"
 file.remove(here("variable_contribution_iheringii.png"))
 ```
 
-Plot the response curves. In order: bio3, bio7^2, bio8, bio9, bio14^2, bio18.
+Plot the response curves. In order: bio3, bio7^2, bio8, bio9, bio14^2,
+bio18.
 
-```{r}
-#| label: resp-curves-ihe
+``` r
 dismo::response(mod_ihe)
 ```
 
-```{r, eval=FALSE}
+``` r
 png("response_curves_iheringii.png")
 dismo::response(mod_ihe)
 dev.off()
@@ -793,17 +776,19 @@ file.remove(here("response_curves_iheringii.png"))
 
 ##### Project
 
-I'm projecting the model to the study area extent. It's not predicting strong suitability for the southern localities. I'll have to look at the genetic structure and locality info more closely to see what's up with them.
+I’m projecting the model to the study area extent. It’s not predicting
+strong suitability for the southern localities. I’ll have to look at the
+genetic structure and locality info more closely to see what’s up with
+them.
 
-```{r}
+``` r
 pred_ihe <- ENMeval::eval.predictions(sdm_ihe)[[opt_seq_tune_ihe]]
 plot(pred_ihe)
 plot(st_geometry(af), add = TRUE)
 plot(st_geometry(locs_ihe), pch = 21, bg = alpha("lightgray", 0.5), add = TRUE)
 ```
 
-```{r}
-#| label: proj-cur-ihe-thresh
+``` r
 pred_ihe_thresh <- pred_ihe$rm.2_fc.LQ
 # observed suitabilities
 obs_suit_ihe <- terra::extract(pred_ihe$rm.2_fc.LQ, locs_ihe)
