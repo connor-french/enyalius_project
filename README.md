@@ -1,6 +1,12 @@
 # README
 
 
+<figure>
+<a href="https://doi.org/10.5281/zenodo.14029198"><img
+src="https://zenodo.org/badge/460098004.svg" alt="DOI" /></a>
+<figcaption>DOI</figcaption>
+</figure>
+
 Code and access to data associated with the *Enyalius* comparative
 phylogeography project.
 

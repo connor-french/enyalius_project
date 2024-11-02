@@ -4,6 +4,8 @@ format: markdown_github
 editor: visual
 ---
 
+[![DOI](https://zenodo.org/badge/460098004.svg)](https://doi.org/10.5281/zenodo.14029198)
+
 Code and access to data associated with the *Enyalius* comparative phylogeography project.
 
 First, clone this repository.
